@@ -2,8 +2,105 @@
 <html lang="en">
 <head>
     <title></title>
+    <style>{{ .Css }}</style>
 </head>
 <body>
-    <h1>Hello world</h1>
+{{ .Menu }}
+Running jobs ({{ len .JobRuns }})<br />
+<table>
+    <thead>
+    <th>Entry ID</th>
+    <th>Run ID</th>
+    <th>Label</th>
+    <th>Spec</th>
+    <th>Started at</th>
+    <th>Actions</th>
+    </thead>
+    <tbody>
+    {{ range .JobRuns }}
+        <tr>
+            <td><span class="monospace"><a href="/entries/{{ .Entry.ID }}">{{ .Entry.ID }}</a></span></td>
+            <td><span class="monospace"><a href="/entries/{{ .Entry.ID }}/runs/{{ .RunID }}">{{ .RunID }}</a></span></td>
+            <td>{{ .Entry.Label }}</td>
+            <td>{{ if .Entry.Spec }}{{ .Entry.Spec }}{{ else }}-{{ end }}</td>
+            <td>{{ .StartedAt | FmtDate }} <small>({{ .StartedAt | ShortDur }})</small></td>
+            <td>
+                <form method="POST" class="d-inline-block">
+                    <input type="hidden" name="formName" value="cancelRun" />
+                    <input type="hidden" name="entryID" value="{{ .Entry.ID }}" />
+                    <input type="hidden" name="runID" value="{{ .RunID }}" />
+                    <input type="submit" value="Cancel" />
+                </form>
+            </td>
+        </tr>
+    {{ else }}
+        <tr><td colspan="6"><em>No running jobs</em></td></tr>
+    {{ end }}
+    </tbody>
+</table>
+
+
+<hr />
+
+Entries ({{ len .Entries }})<br />
+
+<table>
+    <thead>
+    <tr>
+        <th>Entry ID</th>
+        <th>Label</th>
+        <th>Spec</th>
+        <th>Prev</th>
+        <th>Next</th>
+        <th>Active</th>
+        <th>Actions</th>
+    </tr>
+    </thead>
+    <tbody>
+    {{ range .Entries }}
+        <tr>
+            <td><span class="monospace"><a href="/entries/{{ .ID }}">{{ .ID }}</a></span></td>
+            <td>{{ if .Label }}{{ .Label }}{{ else }}-{{ end }}</td>
+            <td>{{ if .Spec }}{{ .Spec }}{{ else }}-{{ end }}</td>
+            <td>{{ .Prev | FmtDate }}</td>
+            <td>{{ .Next | FmtDate }}{{ if not .Next.IsZero }} <small>({{ .Next | ShortDur }})</small>{{ end }}</td>
+            <td class="text-center">
+                {{ if .Active }}
+                    <span class="success">T</span>
+                {{ else }}
+                    <span class="danger">F</span>
+                {{ end }}
+            </td>
+            <td>
+                <form method="POST" class="d-inline-block">
+                    <input type="hidden" name="formName" value="runNow" />
+                    <input type="hidden" name="entryID" value="{{ .ID }}" />
+                    <input type="submit" value="Run now"{{ if not .Active }} disabled{{ end }} />
+                </form>
+                {{ if .Active }}
+                    <form method="POST" class="d-inline-block">
+                        <input type="hidden" name="formName" value="disableEntry" />
+                        <input type="hidden" name="entryID" value="{{ .ID }}" />
+                        <input type="submit" value="Disable" />
+                    </form>
+                {{ else }}
+                    <form method="POST" class="d-inline-block">
+                        <input type="hidden" name="formName" value="enableEntry" />
+                        <input type="hidden" name="entryID" value="{{ .ID }}" />
+                        <input type="submit" value="Enable" />
+                    </form>
+                {{ end }}
+                <form method="POST" class="d-inline-block">
+                    <input type="hidden" name="formName" value="removeEntry" />
+                    <input type="hidden" name="entryID" value="{{ .ID }}" />
+                    <input type="submit" value="Remove" />
+                </form>
+            </td>
+        </tr>
+    {{ else }}
+        <tr><td colspan="7"><em>No entries</em></td></tr>
+    {{ end }}
+    </tbody>
+</table>
 </body>
 </html>
