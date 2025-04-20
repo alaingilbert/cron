@@ -625,40 +625,47 @@ func (c *Cron) cancelRun(entryID EntryID, runID RunID) error {
 	})
 }
 
-func (c *Cron) runningJobs() (out []JobRun) {
+func exportJobRuns(runs []*jobRunStruct) (out []JobRun) {
+	for _, j := range runs {
+		out = append(out, j.export())
+	}
+	return
+}
+
+func jobRunsClb(jobRuns *mtx.RWMtx[jobRunsInner], clb func(jobRunsInner) []*jobRunStruct) (out []JobRun) {
+	jobRuns.RWith(func(v jobRunsInner) {
+		out = exportJobRuns(clb(v))
+	})
+	return
+}
+
+func (c *Cron) jobRunsClb(clb func(jobRunsInner) []*jobRunStruct) (out []JobRun) {
 	for jobRuns := range c.runningJobsMap.IterValues() {
-		jobRuns.RWith(func(v jobRunsInner) {
-			out = append(out, exportJobRuns(v.running)...)
-		})
+		out = append(out, jobRunsClb(jobRuns, clb)...)
 	}
 	sortJobRunsPublic(out)
 	return
 }
 
-func (c *Cron) jobRunsForWith(entryID EntryID, clb func(jobRunsInner) []*jobRunStruct) (out []JobRun, err error) {
+func (c *Cron) jobRunsForClb(entryID EntryID, clb func(jobRunsInner) []*jobRunStruct) (out []JobRun, err error) {
 	if jobRuns, ok := c.runningJobsMap.Load(entryID); ok {
-		jobRuns.RWith(func(v jobRunsInner) {
-			out = exportJobRuns(clb(v))
-		})
+		out = jobRunsClb(jobRuns, clb)
 		sortJobRunsPublic(out)
 		return
 	}
 	return nil, ErrEntryNotFound
 }
 
+func (c *Cron) runningJobs() (out []JobRun) {
+	return c.jobRunsClb(func(v jobRunsInner) []*jobRunStruct { return v.running })
+}
+
 func (c *Cron) runningJobsFor(entryID EntryID) (out []JobRun, err error) {
-	return c.jobRunsForWith(entryID, func(v jobRunsInner) []*jobRunStruct { return v.running })
+	return c.jobRunsForClb(entryID, func(v jobRunsInner) []*jobRunStruct { return v.running })
 }
 
 func (c *Cron) completedJobRunsFor(entryID EntryID) (out []JobRun, err error) {
-	return c.jobRunsForWith(entryID, func(v jobRunsInner) []*jobRunStruct { return v.completed })
-}
-
-func exportJobRuns(runs []*jobRunStruct) (out []JobRun) {
-	for _, j := range runs {
-		out = append(out, j.export())
-	}
-	return
+	return c.jobRunsForClb(entryID, func(v jobRunsInner) []*jobRunStruct { return v.completed })
 }
 
 func sortJobRunsPublic(runs []JobRun) {
