@@ -737,7 +737,8 @@ func makeEvent(c *Cron, entry Entry, jobRun *jobRunStruct, typ JobEventType) {
 }
 
 func makeEventErr(c *Cron, entry Entry, jobRun *jobRunStruct, typ JobEventType, err error) {
-	now := c.clock.Now()
+	clock := c.clock
+	now := clock.Now()
 	var opt func(*jobRunInner)
 	switch typ {
 	case Start:
@@ -751,7 +752,7 @@ func makeEventErr(c *Cron, entry Entry, jobRun *jobRunStruct, typ JobEventType, 
 	case CompletedNoErr:
 		opt = func(inner *jobRunInner) {}
 	}
-	evt := newJobEvent(typ, c.clock)
+	evt := newJobEvent(typ, clock)
 	jobRun.inner.With(func(inner *jobRunInner) {
 		utils.ApplyOptions(inner, opt)
 		inner.addEvent(evt)
