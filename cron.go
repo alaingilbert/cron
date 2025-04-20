@@ -39,8 +39,8 @@ type Cron struct {
 	parser               ScheduleParser                               // Parses cron expressions into schedule objects
 	idFactory            EntryIDFactory                               // Generates a new unique EntryID for each scheduled job
 	ps                   *pubsub.PubSub[EntryID, JobEvent]            //
-	jobRunCreatedCh      chan *jobRunStruct                           //
-	jobRunCompletedCh    chan *jobRunStruct                           //
+	jobRunCreatedCh      chan JobRun                                  //
+	jobRunCompletedCh    chan JobRun                                  //
 	keepCompletedRunsDur mtx.Mtx[time.Duration]                       //
 	lastCleanupTS        mtx.Mtx[time.Time]                           //
 }
@@ -123,8 +123,8 @@ func New(opts ...Option) *Cron {
 		parser:               parser,
 		idFactory:            idFactory,
 		ps:                   pubsub.NewPubSub[EntryID, JobEvent](),
-		jobRunCreatedCh:      make(chan *jobRunStruct),
-		jobRunCompletedCh:    make(chan *jobRunStruct),
+		jobRunCreatedCh:      make(chan JobRun),
+		jobRunCompletedCh:    make(chan JobRun),
 		keepCompletedRunsDur: mtx.NewMtx(keepCompletedRunsDur),
 		entries: mtx.NewRWMtx(entries{
 			entriesHeap: make(EntryHeap, 0),
@@ -186,10 +186,10 @@ func (c *Cron) Sub(id EntryID) *pubsub.Sub[EntryID, JobEvent] {
 }
 
 // JobRunCreatedCh ...
-func (c *Cron) JobRunCreatedCh() <-chan *jobRunStruct { return c.jobRunCreatedCh }
+func (c *Cron) JobRunCreatedCh() <-chan JobRun { return c.jobRunCreatedCh }
 
 // JobRunCompletedCh ...
-func (c *Cron) JobRunCompletedCh() <-chan *jobRunStruct { return c.jobRunCompletedCh }
+func (c *Cron) JobRunCompletedCh() <-chan JobRun { return c.jobRunCompletedCh }
 
 // Enable ...
 func (c *Cron) Enable(id EntryID) { c.setEntryActive(id, true) }
@@ -613,7 +613,7 @@ func (c *Cron) getRunClb(entryID EntryID, runID RunID, clb func(*jobRunStruct)) 
 func (c *Cron) getRun(entryID EntryID, runID RunID) (JobRun, error) {
 	var jobRunPub JobRun
 	err := c.getRunClb(entryID, runID, func(run *jobRunStruct) {
-		jobRunPub = run.Export()
+		jobRunPub = run.export()
 	})
 	return jobRunPub, err
 }
@@ -655,7 +655,7 @@ func (c *Cron) completedJobRunsFor(entryID EntryID) (out []JobRun, err error) {
 
 func exportJobRuns(runs []*jobRunStruct) (out []JobRun) {
 	for _, j := range runs {
-		out = append(out, j.Export())
+		out = append(out, j.export())
 	}
 	return
 }
@@ -675,13 +675,13 @@ func (c *Cron) updateJobsCounter(key EntryID, jobRun *jobRunStruct, delta int32)
 		mapping: make(map[RunID]*jobRunStruct),
 	})))
 	if delta == 1 {
-		utils.NonBlockingSend(c.jobRunCreatedCh, jobRun)
+		utils.NonBlockingSend(c.jobRunCreatedCh, jobRun.export())
 		jobRuns.With(func(v *jobRunsInner) {
 			(*v).mapping[jobRun.runID] = jobRun
 			(*v).running = append((*v).running, jobRun)
 		})
 	} else {
-		utils.NonBlockingSend(c.jobRunCompletedCh, jobRun)
+		utils.NonBlockingSend(c.jobRunCompletedCh, jobRun.export())
 		jobRuns.With(func(v *jobRunsInner) {
 			if idx := slices.Index((*v).running, jobRun); idx != -1 {
 				(*v).running = slices.Delete((*v).running, idx, idx+1)
@@ -751,7 +751,7 @@ func makeEventErr(c *Cron, entry Entry, jobRun *jobRunStruct, typ JobEventType, 
 	case CompletedNoErr:
 		opt = func(inner *jobRunInner) {}
 	}
-	evt := NewJobEvent(typ, jobRun)
+	evt := newJobEvent(typ, c.clock)
 	jobRun.inner.With(func(inner *jobRunInner) {
 		utils.ApplyOptions(inner, opt)
 		inner.addEvent(evt)

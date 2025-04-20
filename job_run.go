@@ -44,7 +44,7 @@ func (j *jobRunInner) addEvent(evt JobEvent) {
 	j.events = append(j.events, evt)
 }
 
-func (j *jobRunStruct) Export() JobRun {
+func (j *jobRunStruct) export() JobRun {
 	innerCopy := j.inner.Get()
 	return JobRun{
 		RunID:       j.runID,

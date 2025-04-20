@@ -1,6 +1,9 @@
 package cron
 
-import "time"
+import (
+	"github.com/jonboulle/clockwork"
+	"time"
+)
 
 type JobEventType int
 
@@ -31,14 +34,12 @@ func (e JobEventType) String() string {
 
 type JobEvent struct {
 	Typ       JobEventType
-	JobRun    JobRun
 	CreatedAt time.Time
 }
 
-func NewJobEvent(typ JobEventType, jobRun *jobRunStruct) JobEvent {
+func newJobEvent(typ JobEventType, clock clockwork.Clock) JobEvent {
 	return JobEvent{
 		Typ:       typ,
-		JobRun:    jobRun.Export(),
-		CreatedAt: jobRun.clock.Now(),
+		CreatedAt: clock.Now(),
 	}
 }
