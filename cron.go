@@ -677,29 +677,23 @@ func (c *Cron) entryExists(id EntryID) bool {
 	return utils.Second(c.getEntry(id)) == nil
 }
 
-func (c *Cron) updateJobsCounter(key EntryID, jobRun *jobRunStruct, delta int32) {
-	jobRuns, _ := c.runningJobsMap.LoadOrStore(key, utils.Ptr(mtx.NewRWMtx(jobRunsInner{
-		mapping: make(map[RunID]*jobRunStruct),
-	})))
-	if delta == 1 {
-		utils.NonBlockingSend(c.jobRunCreatedCh, jobRun.export())
-		jobRuns.With(func(v *jobRunsInner) {
+func (c *Cron) updateJobRuns(entryID EntryID, jobRun *jobRunStruct, isStarting bool) {
+	jobRuns, _ := c.runningJobsMap.LoadOrStore(entryID, utils.Ptr(mtx.NewRWMtx(jobRunsInner{mapping: make(map[RunID]*jobRunStruct)})))
+	notifyCh := utils.Ternary(isStarting, c.jobRunCreatedCh, c.jobRunCompletedCh)
+	utils.NonBlockingSend(notifyCh, jobRun.export())
+	jobRuns.With(func(v *jobRunsInner) {
+		if isStarting {
 			(*v).mapping[jobRun.runID] = jobRun
 			(*v).running = append((*v).running, jobRun)
-		})
-	} else {
-		utils.NonBlockingSend(c.jobRunCompletedCh, jobRun.export())
-		jobRuns.With(func(v *jobRunsInner) {
-			if idx := slices.Index((*v).running, jobRun); idx != -1 {
-				(*v).running = slices.Delete((*v).running, idx, idx+1)
-				if c.keepCompletedRunsDur.Get() > 0 {
-					(*v).completed = append((*v).completed, jobRun)
-				} else {
-					delete((*v).mapping, jobRun.runID)
-				}
+		} else if idx := slices.Index((*v).running, jobRun); idx != -1 {
+			(*v).running = slices.Delete((*v).running, idx, idx+1)
+			if c.keepCompletedRunsDur.Get() > 0 {
+				(*v).completed = append((*v).completed, jobRun)
+			} else {
+				delete((*v).mapping, jobRun.runID)
 			}
-		})
-	}
+		}
+	})
 }
 
 // startJob runs the given job in a new goroutine.
@@ -708,11 +702,11 @@ func (c *Cron) startJob(entry Entry) {
 	c.runningJobsCount.Add(1)
 	go func() {
 		defer func() {
-			c.updateJobsCounter(entry.ID, jobRun, -1)
+			c.updateJobRuns(entry.ID, jobRun, false)
 			c.runningJobsCount.Add(-1)
 			c.signalJobCompleted()
 		}()
-		c.updateJobsCounter(entry.ID, jobRun, 1)
+		c.updateJobRuns(entry.ID, jobRun, true)
 		c.runWithRecovery(jobRun)
 	}()
 }
