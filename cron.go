@@ -362,10 +362,10 @@ func (c *Cron) schedule(spec *string, schedule Schedule, job Job, opts ...EntryO
 }
 
 func (c *Cron) addEntry(entry Entry, opts ...EntryOption) (EntryID, error) {
+	var zeroID EntryID
 	for _, opt := range opts {
 		opt(c, &entry)
 	}
-	var zeroID EntryID
 	if entry.ID == zeroID {
 		return zeroID, errors.New("id cannot be empty")
 	}
@@ -373,7 +373,6 @@ func (c *Cron) addEntry(entry Entry, opts ...EntryOption) (EntryID, error) {
 		entry.Next = time.Time{}
 	}
 	if c.entryExists(entry.ID) {
-		var zeroID EntryID
 		return zeroID, ErrIDAlreadyUsed
 	}
 	c.entries.With(func(entries *entries) {
