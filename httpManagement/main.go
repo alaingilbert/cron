@@ -57,6 +57,16 @@ func redirectTo(w http.ResponseWriter, l string) {
 	w.WriteHeader(http.StatusSeeOther)
 }
 
+func render(code int, name string, data any, w http.ResponseWriter) {
+	tmplHtml, _ := fs.ReadFile(name)
+	tmpl, _ := template.New("").Funcs(funcsMap).Parse(string(tmplHtml))
+	var b bytes.Buffer
+	_ = tmpl.Execute(&b, data)
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(code)
+	_, _ = w.Write(b.Bytes())
+}
+
 func indexHandler(c *cron.Cron) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
@@ -89,13 +99,7 @@ func indexHandler(c *cron.Cron) http.HandlerFunc {
 			"Css":     template.CSS(getCss()),
 			"Menu":    template.HTML(getMenu(c)),
 		}
-		tmplHtml, _ := fs.ReadFile("templates/index.gohtml")
-		tmpl, _ := template.New("").Funcs(funcsMap).Parse(string(tmplHtml))
-		var b bytes.Buffer
-		_ = tmpl.Execute(&b, data)
-		w.Header().Set("Content-Type", "text/html")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(b.Bytes())
+		render(http.StatusOK, "templates/index.gohtml", data, w)
 	}
 }
 
@@ -137,13 +141,7 @@ func entryHandler(c *cron.Cron) http.HandlerFunc {
 			"Css":              template.CSS(getCss()),
 			"Menu":             template.HTML(getMenu(c)),
 		}
-		tmplHtml, _ := fs.ReadFile("templates/entry.gohtml")
-		tmpl, _ := template.New("").Funcs(funcsMap).Parse(string(tmplHtml))
-		var b bytes.Buffer
-		_ = tmpl.Execute(&b, data)
-		w.Header().Set("Content-Type", "text/html")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(b.Bytes())
+		render(http.StatusOK, "templates/entry.gohtml", data, w)
 	}
 }
 
@@ -173,12 +171,6 @@ func runHandler(c *cron.Cron) http.HandlerFunc {
 			"Css":    template.CSS(getCss()),
 			"Menu":   template.HTML(getMenu(c)),
 		}
-		tmplHtml, _ := fs.ReadFile("templates/run.gohtml")
-		tmpl, _ := template.New("").Funcs(funcsMap).Parse(string(tmplHtml))
-		var b bytes.Buffer
-		_ = tmpl.Execute(&b, data)
-		w.Header().Set("Content-Type", "text/html")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(b.Bytes())
+		render(http.StatusOK, "templates/run.gohtml", data, w)
 	}
 }
