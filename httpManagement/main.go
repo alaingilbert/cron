@@ -181,8 +181,6 @@ func runHandler(c *cron.Cron) http.HandlerFunc {
 			formName := r.PostFormValue("formName")
 			if formName == "cancelRun" {
 				_ = c.CancelJobRun(entry.ID, jobRun.RunID)
-				redirectTo(w, "/entries/"+string(entryID))
-				return
 			}
 			redirectTo(w, "/entries/"+string(entryID))
 			return
