@@ -1295,7 +1295,7 @@ func TestCancelRun(t *testing.T) {
 	_, err = cron.GetJobRun("do-not-exist", runID)
 	assert.ErrorIs(t, err, ErrEntryNotFound)
 	_, err = cron.GetJobRun(id, "do-not-exist")
-	assert.ErrorIs(t, err, ErrRunNotFound)
+	assert.ErrorIs(t, err, ErrJobRunNotFound)
 	_ = cron.CancelJobRun(id, runID)
 	advanceAndCycle(cron, time.Second)
 	runs1, _ := cron.RunningJobsFor(id)

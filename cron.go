@@ -58,8 +58,8 @@ type entries struct {
 // ErrEntryNotFound ...
 var ErrEntryNotFound = errors.New("entry not found")
 
-// ErrRunNotFound ...
-var ErrRunNotFound = errors.New("run not found")
+// ErrJobRunNotFound ...
+var ErrJobRunNotFound = errors.New("job run not found")
 
 // ErrUnsupportedJobType ...
 var ErrUnsupportedJobType = errors.New("unsupported job type")
@@ -599,7 +599,7 @@ func (c *Cron) getRunClb(entryID EntryID, runID RunID, clb func(*jobRunStruct)) 
 				clb(run)
 				return nil
 			}
-			return ErrRunNotFound
+			return ErrJobRunNotFound
 		}); err != nil {
 			return err
 		}
