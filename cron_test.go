@@ -8,7 +8,7 @@ import (
 	"github.com/alaingilbert/cron/internal/pubsub"
 	"github.com/alaingilbert/cron/internal/utils"
 	"io"
-	"log"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -67,9 +67,14 @@ func TestFuncPanicRecovery(t *testing.T) {
 	assert.Equal(t, "PANIC ERROR", <-ch)
 }
 
+func newNoOpLogger() *slog.Logger {
+	handler := slog.NewTextHandler(io.Discard, nil)
+	return slog.New(handler)
+}
+
 func TestJobPanicRecovery(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithLogger(log.New(io.Discard, "", log.LstdFlags)), WithParser(secondParser))
+	cron := New(WithClock(clock), WithLogger(newNoOpLogger()), WithParser(secondParser))
 	cron.Start()
 	_, _ = cron.AddJob("* * * * * ?", PanicJob{})
 	advanceAndCycle(cron, time.Second)
@@ -78,7 +83,8 @@ func TestJobPanicRecovery(t *testing.T) {
 func TestLogError(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
 	buf := bytes.NewBuffer(nil)
-	cron := New(WithClock(clock), WithLogger(log.New(buf, "", log.LstdFlags)), WithParser(secondParser))
+	l := slog.New(slog.NewTextHandler(buf, nil))
+	cron := New(WithClock(clock), WithLogger(l), WithParser(secondParser))
 	_, _ = cron.AddJob("* * * * * ?", func() error { return errors.New("some error") })
 	cron.Start()
 	advanceAndCycle(cron, time.Second)
@@ -1179,7 +1185,7 @@ func (l *EventListener) Wait(clb func() bool) {
 
 func TestEvents(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 59, 0, time.UTC))
-	cron := New(WithClock(clock), WithLogger(log.New(io.Discard, "", log.LstdFlags)))
+	cron := New(WithClock(clock), WithLogger(newNoOpLogger()))
 	c1 := make(chan struct{})
 	id, _ := cron.AddJob("* * * * *", SkipIfStillRunning(func() {
 		clock.SleepNotify(150*time.Second, c1) // sleep 2m30s

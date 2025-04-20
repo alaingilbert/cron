@@ -6,8 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/alaingilbert/cron/internal/pubsub"
-	"log"
-	"os"
+	"log/slog"
 	"runtime/debug"
 	"slices"
 	"sort"
@@ -35,7 +34,7 @@ type Cron struct {
 	update               chan context.CancelFunc                      // Triggers update in the scheduler loop
 	running              atomic.Bool                                  // Indicates if the scheduler is currently running
 	location             mtx.RWMtx[*time.Location]                    // Thread-safe time zone location
-	logger               *log.Logger                                  // Logger for scheduler events, errors, and diagnostics
+	logger               *slog.Logger                                 // Logger for scheduler events, errors, and diagnostics
 	parser               ScheduleParser                               // Parses cron expressions into schedule objects
 	idFactory            EntryIDFactory                               // Generates a new unique EntryID for each scheduled job
 	ps                   *pubsub.PubSub[EntryID, JobEvent]            //
@@ -106,7 +105,7 @@ func New(opts ...Option) *Cron {
 	clock := utils.Or(cfg.Clock, clockwork.NewRealClock())
 	location := utils.Or(cfg.Location, clock.Now().Location())
 	parentCtx := utils.Or(cfg.Ctx, context.Background())
-	logger := utils.Or(cfg.Logger, log.New(os.Stderr, "cron", log.LstdFlags))
+	logger := utils.Or(cfg.Logger, slog.Default())
 	parser := utils.Or(cfg.Parser, ScheduleParser(standardParser))
 	idFactory := utils.Or(cfg.IDFactory, UUIDEntryIDFactory())
 	keepCompletedRunsDur := utils.Default(cfg.KeepCompletedRunsDur, time.Minute)
@@ -723,7 +722,7 @@ func (c *Cron) runWithRecovery(jobRun *jobRunStruct) {
 	logger := c.logger
 	defer func() {
 		if r := recover(); r != nil {
-			logger.Printf("%v\n%s\n", r, string(debug.Stack()))
+			logger.Error("%v\n%s\n", r, string(debug.Stack()))
 			makeEvent(c, entry, jobRun, CompletedPanic)
 		}
 		makeEvent(c, entry, jobRun, Completed)
@@ -733,7 +732,7 @@ func (c *Cron) runWithRecovery(jobRun *jobRunStruct) {
 		msg := fmt.Sprintf("error running job %s", entry.ID)
 		msg += utils.TernaryOrZero(entry.Label != "", " "+entry.Label)
 		msg += " : " + err.Error()
-		logger.Println(msg)
+		logger.Error(msg)
 		makeEventErr(c, entry, jobRun, CompletedErr, err)
 	} else {
 		makeEvent(c, entry, jobRun, CompletedNoErr)

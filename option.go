@@ -2,7 +2,7 @@ package cron
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/jonboulle/clockwork"
@@ -13,7 +13,7 @@ type Config struct {
 	Ctx                  context.Context
 	Location             *time.Location
 	Clock                clockwork.Clock
-	Logger               *log.Logger
+	Logger               *slog.Logger
 	Parser               ScheduleParser
 	IDFactory            EntryIDFactory
 	KeepCompletedRunsDur *time.Duration
@@ -51,7 +51,7 @@ func WithContext(ctx context.Context) Option {
 }
 
 // WithLogger ...
-func WithLogger(logger *log.Logger) Option {
+func WithLogger(logger *slog.Logger) Option {
 	return func(c *Config) {
 		c.Logger = logger
 	}
