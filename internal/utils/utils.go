@@ -210,11 +210,17 @@ func ShortDur(v any) string {
 }
 
 // UuidV4 generates a new UUID v4
-func UuidV4() string {
+func UuidV4() [16]byte {
 	var uuid [16]byte
 	_, _ = io.ReadFull(cryptoRand.Reader, uuid[:])
 	uuid[6] = (uuid[6] & 0x0f) | 0x40 // Version 4
 	uuid[8] = (uuid[8] & 0x3f) | 0x80 // Variant is 10
+	return uuid
+}
+
+// UuidV4Str ...
+func UuidV4Str() string {
+	uuid := UuidV4()
 	var buf [32]byte
 	hex.Encode(buf[:], uuid[:4])
 	hex.Encode(buf[8:12], uuid[4:6])

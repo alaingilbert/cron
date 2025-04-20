@@ -61,7 +61,7 @@ func (j *jobRunStruct) export() JobRun {
 func newJobRun(ctx context.Context, clock clockwork.Clock, entry Entry) *jobRunStruct {
 	ctx, cancel := context.WithCancel(ctx)
 	return &jobRunStruct{
-		runID:     RunID(utils.UuidV4()),
+		runID:     RunID(utils.UuidV4Str()),
 		entry:     entry,
 		clock:     clock,
 		createdAt: clock.Now(),

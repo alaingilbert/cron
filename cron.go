@@ -93,7 +93,7 @@ type EntryIDFactory interface {
 // UUIDEntryIDFactory generate and format UUID V4
 func UUIDEntryIDFactory() EntryIDFactory {
 	return FuncEntryIDFactory(func() EntryID {
-		return EntryID(utils.UuidV4())
+		return EntryID(utils.UuidV4Str())
 	})
 }
 
