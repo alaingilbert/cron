@@ -81,17 +81,18 @@ func indexHandler(c *cron.Cron) http.HandlerFunc {
 			redirectTo(w, "/")
 			return
 		}
-		var b bytes.Buffer
 		jobRuns := c.RunningJobs()
 		entries := c.Entries()
-		tmplHtml, _ := fs.ReadFile("templates/index.gohtml")
-		tmpl, _ := template.New("").Funcs(funcsMap).Parse(string(tmplHtml))
-		_ = tmpl.Execute(&b, map[string]any{
+		data := map[string]any{
 			"JobRuns": jobRuns,
 			"Entries": entries,
 			"Css":     template.CSS(getCss()),
 			"Menu":    template.HTML(getMenu(c)),
-		})
+		}
+		tmplHtml, _ := fs.ReadFile("templates/index.gohtml")
+		tmpl, _ := template.New("").Funcs(funcsMap).Parse(string(tmplHtml))
+		var b bytes.Buffer
+		_ = tmpl.Execute(&b, data)
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(b.Bytes())
@@ -125,19 +126,21 @@ func entryHandler(c *cron.Cron) http.HandlerFunc {
 			redirectTo(w, "/entries/"+string(entryID))
 			return
 		}
-		var b bytes.Buffer
+
 		jobRuns, _ := c.RunningJobsFor(entryID)
 		completedJobRuns, _ := c.CompletedJobRunsFor(entryID)
 		slices.Reverse(completedJobRuns)
-		tmplHtml, _ := fs.ReadFile("templates/entry.gohtml")
-		tmpl, _ := template.New("").Funcs(funcsMap).Parse(string(tmplHtml))
-		_ = tmpl.Execute(&b, map[string]any{
+		data := map[string]any{
 			"Entry":            entry,
 			"JobRuns":          jobRuns,
 			"CompletedJobRuns": completedJobRuns,
 			"Css":              template.CSS(getCss()),
 			"Menu":             template.HTML(getMenu(c)),
-		})
+		}
+		tmplHtml, _ := fs.ReadFile("templates/entry.gohtml")
+		tmpl, _ := template.New("").Funcs(funcsMap).Parse(string(tmplHtml))
+		var b bytes.Buffer
+		_ = tmpl.Execute(&b, data)
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(b.Bytes())
@@ -164,15 +167,16 @@ func runHandler(c *cron.Cron) http.HandlerFunc {
 			redirectTo(w, "/entries/"+string(entryID))
 			return
 		}
-		var b bytes.Buffer
-		tmplHtml, _ := fs.ReadFile("templates/run.gohtml")
-		tmpl, _ := template.New("").Funcs(funcsMap).Parse(string(tmplHtml))
-		_ = tmpl.Execute(&b, map[string]any{
+		data := map[string]any{
 			"JobRun": jobRun,
 			"Entry":  entry,
 			"Css":    template.CSS(getCss()),
 			"Menu":   template.HTML(getMenu(c)),
-		})
+		}
+		tmplHtml, _ := fs.ReadFile("templates/run.gohtml")
+		tmpl, _ := template.New("").Funcs(funcsMap).Parse(string(tmplHtml))
+		var b bytes.Buffer
+		_ = tmpl.Execute(&b, data)
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(b.Bytes())
