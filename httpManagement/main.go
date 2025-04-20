@@ -2,6 +2,7 @@ package httpManagement
 
 import (
 	"bytes"
+	"embed"
 	"github.com/alaingilbert/cron"
 	"github.com/alaingilbert/cron/internal/utils"
 	"html/template"
@@ -9,6 +10,9 @@ import (
 	"slices"
 	"time"
 )
+
+//go:embed templates/* css/*
+var fs embed.FS
 
 func GetMux(c *cron.Cron) *http.ServeMux {
 	mux := http.NewServeMux()
@@ -21,125 +25,10 @@ func GetMux(c *cron.Cron) *http.ServeMux {
 	return mux
 }
 
-var css = `
-<style>
-* {
-	-webkit-box-sizing: border-box;
-	box-sizing: border-box;
+func getCss() string {
+	style, _ := fs.ReadFile("css/style.css")
+	return string(style)
 }
-
-body {
-	color-scheme: light dark;
-	font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
-	line-height: 1.75em;
-	font-size: 16px;
-	background-color: #222;
-	color: #aaa;
-}
-
-.simple-container {
-	max-width: 675px;
-	margin: 0 auto;
-	padding-top: 70px;
-	padding-bottom: 20px;
-}
-
-.simple-print {
-	fill: white;
-	stroke: white;
-}
-.simple-print svg {
-	height: 100%;
-}
-
-.simple-close {
-	color: white;
-	border-color: white;
-}
-
-.simple-ext-info {
-	border-top: 1px solid #aaa;
-}
-
-p {
-	font-size: 16px;
-}
-
-h1 {
-	font-size: 30px;
-	line-height: 34px;
-}
-
-h2 {
-	font-size: 20px;
-	line-height: 25px;
-}
-
-h3 {
-	font-size: 16px;
-	line-height: 27px;
-	padding-top: 15px;
-	padding-bottom: 15px;
-	border-bottom: 1px solid #D8D8D8;
-	border-top: 1px solid #D8D8D8;
-}
-
-hr {
-	height: 1px;
-	background-color: #d8d8d8;
-	border: none;
-	width: 100%;
-	margin: 0px;
-}
-
-a[href] {
-	color: #1e8ad6;
-}
-
-a[href]:hover {
-	color: #3ba0e6;
-}
-
-img {
-	max-width: 100%;
-}
-
-li {
-	line-height: 1.5em;
-}
-
-aside,
-[class *= "sidebar"],
-[id *= "sidebar"] {
-	max-width: 90%;
-	margin: 0 auto;
-	border: 1px solid lightgrey;
-	padding: 5px 15px;
-}
-
-@media (min-width: 1921px) {
-	body {
-		font-size: 18px;
-	}
-}
-	form {
-		margin: 0;
-	}
-	table td {
-		padding: 0 5px;
-	}
-	.monospace { font-family: monospace; }
-	a {
-		color: #eee;
-	}
-	.d-inline-block { display: inline-block; }
-	.success { color: #0f0; }
-	.danger { color: #f00; }
-	.mb-1 { margin-bottom: 10px; }
-	small { color: #666; }
-	.text-center { text-align: center; }
-</style>
-`
 
 func getMenu(c *cron.Cron) string {
 	out := `
@@ -175,15 +64,15 @@ func getIndexHandler(c *cron.Cron) http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 		jobRuns := c.RunningJobs()
 		entries := c.Entries()
-
+		
 		tmpl, _ := template.New("").Funcs(funcsMap).Parse(`
 <!doctype html>
 <html>
 <head>
-	` + css + `
+	<style>{{ .Css }}</style>
 </head>
 <body>
-` + getMenu(c) + `
+{{ .Menu }}
 Running jobs ({{ len .JobRuns }})<br />
 <table>
 	<thead>
@@ -286,6 +175,8 @@ Entries ({{ len .Entries }})<br />
 		_ = tmpl.Execute(&b, map[string]any{
 			"JobRuns": jobRuns,
 			"Entries": entries,
+			"Css":     template.CSS(getCss()),
+			"Menu":    template.HTML(getMenu(c)),
 		})
 		_, _ = w.Write(b.Bytes())
 	}
@@ -333,10 +224,10 @@ func getEntryHandler(c *cron.Cron) http.HandlerFunc {
 <!doctype html>
 <html>
 <head>
-	` + css + `
+	<style>{{ .Css }}</style>
 </head>
 <body>
-` + getMenu(c) + `
+{{ .Menu }}
 <table class="mb-1">
 	<tr><td>Entry ID:</td><td><span class="monospace">{{ .Entry.ID }}</span></td></tr>
 	<tr><td>Label:</td><td>{{ .Entry.Label }}</td></tr>
@@ -454,6 +345,8 @@ Completed jobs ({{ len .CompletedJobRuns }})<br />
 			"Entry":            entry,
 			"JobRuns":          jobRuns,
 			"CompletedJobRuns": completedJobRuns,
+			"Css":              template.CSS(getCss()),
+			"Menu":             template.HTML(getMenu(c)),
 		})
 		_, _ = w.Write(b.Bytes())
 	}
@@ -507,10 +400,10 @@ func getRunHandler(c *cron.Cron) http.HandlerFunc {
 <!doctype html>
 <html>
 <head>
-	` + css + `
+	<style>{{ .Css }}</style>
 </head>
 <body>
-` + getMenu(c) + `
+{{ .Menu }}
 <table class="mb-1">
 	<tr><td>Run ID:</td><td><span class="monospace">{{ .JobRun.RunID }}</span></td></tr>
 	<tr><td>Entry ID:</td><td><span class="monospace"><a href="/entries/{{ .Entry.ID }}">{{ .Entry.ID }}</a></span></td></tr>
@@ -554,6 +447,8 @@ Events ({{ len .JobRun.Events }})<br />
 		_ = tmpl.Execute(&b, map[string]any{
 			"JobRun": jobRun,
 			"Entry":  entry,
+			"Css":    template.CSS(getCss()),
+			"Menu":   template.HTML(getMenu(c)),
 		})
 		_, _ = w.Write(b.Bytes())
 	}
