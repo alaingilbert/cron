@@ -29,6 +29,13 @@ func WithLocation(loc *time.Location) Option {
 	}
 }
 
+// WithKeepCompletedRunsDur ...
+func WithKeepCompletedRunsDur(keepCompletedRunsDur time.Duration) Option {
+	return func(c *Config) {
+		c.KeepCompletedRunsDur = &keepCompletedRunsDur
+	}
+}
+
 // WithClock ...
 func WithClock(clock clockwork.Clock) Option {
 	return func(c *Config) {

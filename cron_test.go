@@ -1214,3 +1214,57 @@ func TestRunningJobs(t *testing.T) {
 	jobs := cron.runningJobs()
 	assert.Equal(t, 2, len(jobs))
 }
+
+func TestRunningJobsFor(t *testing.T) {
+	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	cron := New(WithClock(clock), WithParser(secondParser))
+	var calls atomic.Int32
+	c1 := make(chan struct{})
+	c2 := make(chan struct{})
+	c3 := make(chan struct{})
+	id, _ := cron.AddJob("* * * * * *", func() {
+		val := calls.Add(1)
+		if val == 1 {
+			clock.SleepNotify(time.Minute, c1)
+		} else if val == 2 {
+			clock.SleepNotify(time.Minute, c2)
+		} else if val == 3 {
+			clock.SleepNotify(time.Minute, c3)
+		}
+	})
+	cron.Start()
+	advanceAndCycleNoWait(cron, time.Second)
+	advanceAndCycleNoWait(cron, time.Second)
+	advanceAndCycleNoWait(cron, time.Second)
+	<-c1
+	<-c2
+	<-c3
+	jobs, _ := cron.RunningJobsFor(id)
+	assert.Equal(t, 3, len(jobs))
+}
+
+func TestCompletedJobsFor(t *testing.T) {
+	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	cron := New(WithClock(clock), WithParser(secondParser))
+	id, _ := cron.AddJob("* * * * * *", func() {})
+	cron.Start()
+	advanceAndCycle(cron, time.Second)
+	advanceAndCycle(cron, time.Second)
+	advanceAndCycle(cron, time.Second)
+	jobs, _ := cron.CompletedJobRunsFor(id)
+	assert.Equal(t, 3, len(jobs))
+	_, err := cron.CompletedJobRunsFor("do-not-exist")
+	assert.ErrorIs(t, err, ErrEntryNotFound)
+}
+
+func TestCompletedJobsFor1(t *testing.T) {
+	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	cron := New(WithClock(clock), WithParser(secondParser), WithKeepCompletedRunsDur(0))
+	id, _ := cron.AddJob("* * * * * *", func() {})
+	cron.Start()
+	advanceAndCycle(cron, time.Second)
+	advanceAndCycle(cron, time.Second)
+	advanceAndCycle(cron, time.Second)
+	jobs, _ := cron.CompletedJobRunsFor(id)
+	assert.Equal(t, 0, len(jobs))
+}
