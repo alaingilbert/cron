@@ -16,12 +16,12 @@ var fs embed.FS
 
 func GetMux(c *cron.Cron) *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET  /{$}", indexHandler(c))
-	mux.HandleFunc("POST /{$}", indexHandler(c))
-	mux.HandleFunc("GET  /entries/{entryID}/{$}", entryHandler(c))
-	mux.HandleFunc("POST /entries/{entryID}/{$}", entryHandler(c))
-	mux.HandleFunc("GET  /entries/{entryID}/runs/{runID}/{$}", runHandler(c))
-	mux.HandleFunc("POST /entries/{entryID}/runs/{runID}/{$}", runHandler(c))
+	mux.Handle("GET  /{$}", indexHandler(c))
+	mux.Handle("POST /{$}", indexHandler(c))
+	mux.Handle("GET  /entries/{entryID}/{$}", entryHandler(c))
+	mux.Handle("POST /entries/{entryID}/{$}", entryHandler(c))
+	mux.Handle("GET  /entries/{entryID}/runs/{runID}/{$}", runHandler(c))
+	mux.Handle("POST /entries/{entryID}/runs/{runID}/{$}", runHandler(c))
 	return mux
 }
 
@@ -52,19 +52,39 @@ var funcsMap = template.FuncMap{
 	"ShortDur": func(t time.Time) string { return utils.ShortDur(t) },
 }
 
-func redirectTo(w http.ResponseWriter, l string) {
+func redirectTo(w http.ResponseWriter, l string) error {
 	w.Header().Set("Location", l)
 	w.WriteHeader(http.StatusSeeOther)
+	return nil
 }
 
-func render(code int, name string, data any, w http.ResponseWriter) {
-	tmplHtml, _ := fs.ReadFile(name)
-	tmpl, _ := template.New("").Funcs(funcsMap).Parse(string(tmplHtml))
+func render(code int, name string, data any, w http.ResponseWriter) error {
+	tmplHtml, err := fs.ReadFile(name)
+	if err != nil {
+		return err
+	}
+	tmpl, err := template.New("").Funcs(funcsMap).Parse(string(tmplHtml))
+	if err != nil {
+		return err
+	}
 	var b bytes.Buffer
-	_ = tmpl.Execute(&b, data)
+	if err := tmpl.Execute(&b, data); err != nil {
+		return err
+	}
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(code)
-	_, _ = w.Write(b.Bytes())
+	if _, err := w.Write(b.Bytes()); err != nil {
+		return err
+	}
+	return nil
+}
+
+type M func(w http.ResponseWriter, r *http.Request) error
+
+func (m M) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if err := (m)(w, r); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 type indexData struct {
@@ -89,8 +109,8 @@ type runData struct {
 	Entry  cron.Entry
 }
 
-func indexHandler(c *cron.Cron) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func indexHandler(c *cron.Cron) http.Handler {
+	return M(func(w http.ResponseWriter, r *http.Request) error {
 		if r.Method == http.MethodPost {
 			formName := r.PostFormValue("formName")
 			if formName == "cancelRun" {
@@ -110,8 +130,7 @@ func indexHandler(c *cron.Cron) http.HandlerFunc {
 				entryID := cron.EntryID(r.PostFormValue("entryID"))
 				_ = c.RunNow(entryID)
 			}
-			redirectTo(w, "/")
-			return
+			return redirectTo(w, "/")
 		}
 		jobRuns := c.RunningJobs()
 		entries := c.Entries()
@@ -121,17 +140,16 @@ func indexHandler(c *cron.Cron) http.HandlerFunc {
 			Css:     template.CSS(getCss()),
 			Menu:    template.HTML(getMenu(c)),
 		}
-		render(http.StatusOK, "templates/index.gohtml", data, w)
-	}
+		return render(http.StatusOK, "templates/index.gohtml", data, w)
+	})
 }
 
-func entryHandler(c *cron.Cron) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func entryHandler(c *cron.Cron) http.Handler {
+	return M(func(w http.ResponseWriter, r *http.Request) error {
 		entryID := cron.EntryID(r.PathValue("entryID"))
 		entry, err := c.Entry(entryID)
 		if err != nil {
-			redirectTo(w, "/")
-			return
+			return redirectTo(w, "/")
 		}
 		if r.Method == http.MethodPost {
 			formName := r.PostFormValue("formName")
@@ -149,8 +167,7 @@ func entryHandler(c *cron.Cron) http.HandlerFunc {
 				runID := cron.RunID(r.PostFormValue("runID"))
 				_ = c.CancelJobRun(entryID, runID)
 			}
-			redirectTo(w, "/entries/"+string(entryID))
-			return
+			return redirectTo(w, "/entries/"+string(entryID))
 		}
 
 		jobRuns, _ := c.RunningJobsFor(entryID)
@@ -163,27 +180,25 @@ func entryHandler(c *cron.Cron) http.HandlerFunc {
 			Css:              template.CSS(getCss()),
 			Menu:             template.HTML(getMenu(c)),
 		}
-		render(http.StatusOK, "templates/entry.gohtml", data, w)
-	}
+		return render(http.StatusOK, "templates/entry.gohtml", data, w)
+	})
 }
 
-func runHandler(c *cron.Cron) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func runHandler(c *cron.Cron) http.Handler {
+	return M(func(w http.ResponseWriter, r *http.Request) error {
 		entryID := cron.EntryID(r.PathValue("entryID"))
 		runID := cron.RunID(r.PathValue("runID"))
 		entry, entryErr := c.Entry(entryID)
 		jobRun, runErr := c.GetJobRun(entryID, runID)
 		if entryErr != nil || runErr != nil {
-			redirectTo(w, "/")
-			return
+			return redirectTo(w, "/")
 		}
 		if r.Method == http.MethodPost {
 			formName := r.PostFormValue("formName")
 			if formName == "cancelRun" {
 				_ = c.CancelJobRun(entry.ID, jobRun.RunID)
 			}
-			redirectTo(w, "/entries/"+string(entryID))
-			return
+			return redirectTo(w, "/entries/"+string(entryID))
 		}
 		data := runData{
 			JobRun: jobRun,
@@ -191,6 +206,6 @@ func runHandler(c *cron.Cron) http.HandlerFunc {
 			Css:    template.CSS(getCss()),
 			Menu:   template.HTML(getMenu(c)),
 		}
-		render(http.StatusOK, "templates/run.gohtml", data, w)
-	}
+		return render(http.StatusOK, "templates/run.gohtml", data, w)
+	})
 }
