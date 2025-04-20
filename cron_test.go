@@ -1295,3 +1295,29 @@ func TestCancelRun(t *testing.T) {
 	runs1, _ := cron.RunningJobsFor(id)
 	assert.Equal(t, 0, len(runs1))
 }
+
+func TestJobRunEvents(t *testing.T) {
+	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	cron := New(WithClock(clock), WithKeepCompletedRunsDur(0))
+	c0 := make(chan struct{})
+	_, _ = cron.AddJob("* * * * *", func() { clock.SleepNotify(time.Second, c0) })
+	cron.Start()
+	createdCh := cron.JobRunCreatedCh()
+	completedCh := cron.JobRunCompletedCh()
+	c1 := make(chan struct{})
+	c2 := make(chan struct{})
+	c3 := make(chan struct{})
+	go func() {
+		close(c1)
+		<-createdCh
+		close(c2)
+		<-completedCh
+		close(c3)
+	}()
+	<-c1
+	advanceAndCycleNoWait(cron, time.Minute)
+	<-c2
+	<-c0
+	advanceAndCycleNoWait(cron, time.Second)
+	<-c3
+}
