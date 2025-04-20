@@ -654,16 +654,19 @@ func (c *Cron) jobRunsForClb(entryID EntryID, clb func(jobRunsInner) []*jobRunSt
 	return nil, ErrEntryNotFound
 }
 
+var getRunningSliceClb = func(v jobRunsInner) []*jobRunStruct { return v.running }
+var getCompletedSliceClb = func(v jobRunsInner) []*jobRunStruct { return v.completed }
+
 func (c *Cron) runningJobs() (out []JobRun) {
-	return c.jobRunsClb(func(v jobRunsInner) []*jobRunStruct { return v.running })
+	return c.jobRunsClb(getRunningSliceClb)
 }
 
 func (c *Cron) runningJobsFor(entryID EntryID) (out []JobRun, err error) {
-	return c.jobRunsForClb(entryID, func(v jobRunsInner) []*jobRunStruct { return v.running })
+	return c.jobRunsForClb(entryID, getRunningSliceClb)
 }
 
 func (c *Cron) completedJobRunsFor(entryID EntryID) (out []JobRun, err error) {
-	return c.jobRunsForClb(entryID, func(v jobRunsInner) []*jobRunStruct { return v.completed })
+	return c.jobRunsForClb(entryID, getCompletedSliceClb)
 }
 
 func sortJobRunsPublic(runs []JobRun) {
