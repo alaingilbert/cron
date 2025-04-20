@@ -82,8 +82,6 @@ func indexHandler(c *cron.Cron) http.HandlerFunc {
 			return
 		}
 		var b bytes.Buffer
-		w.Header().Set("Content-Type", "text/html")
-		w.WriteHeader(http.StatusOK)
 		jobRuns := c.RunningJobs()
 		entries := c.Entries()
 		tmplHtml, _ := fs.ReadFile("templates/index.gohtml")
@@ -94,6 +92,8 @@ func indexHandler(c *cron.Cron) http.HandlerFunc {
 			"Css":     template.CSS(getCss()),
 			"Menu":    template.HTML(getMenu(c)),
 		})
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(b.Bytes())
 	}
 }
@@ -126,8 +126,6 @@ func entryHandler(c *cron.Cron) http.HandlerFunc {
 			return
 		}
 		var b bytes.Buffer
-		w.Header().Set("Content-Type", "text/html")
-		w.WriteHeader(http.StatusOK)
 		jobRuns, _ := c.RunningJobsFor(entryID)
 		completedJobRuns, _ := c.CompletedJobRunsFor(entryID)
 		slices.Reverse(completedJobRuns)
@@ -140,6 +138,8 @@ func entryHandler(c *cron.Cron) http.HandlerFunc {
 			"Css":              template.CSS(getCss()),
 			"Menu":             template.HTML(getMenu(c)),
 		})
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(b.Bytes())
 	}
 }
@@ -165,8 +165,6 @@ func runHandler(c *cron.Cron) http.HandlerFunc {
 			return
 		}
 		var b bytes.Buffer
-		w.Header().Set("Content-Type", "text/html")
-		w.WriteHeader(http.StatusOK)
 		tmplHtml, _ := fs.ReadFile("templates/run.gohtml")
 		tmpl, _ := template.New("").Funcs(funcsMap).Parse(string(tmplHtml))
 		_ = tmpl.Execute(&b, map[string]any{
@@ -175,6 +173,8 @@ func runHandler(c *cron.Cron) http.HandlerFunc {
 			"Css":    template.CSS(getCss()),
 			"Menu":   template.HTML(getMenu(c)),
 		})
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(b.Bytes())
 	}
 }
