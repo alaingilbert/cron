@@ -225,13 +225,13 @@ func (c *Cron) CompletedJobRunsFor(entryID EntryID) ([]JobRun, error) {
 	return c.completedJobRunsFor(entryID)
 }
 
-// GetRun ...
-func (c *Cron) GetRun(entryID EntryID, runID RunID) (JobRun, error) {
+// GetJobRun ...
+func (c *Cron) GetJobRun(entryID EntryID, runID RunID) (JobRun, error) {
 	return c.getRun(entryID, runID)
 }
 
-// CancelRun ...
-func (c *Cron) CancelRun(entryID EntryID, runID RunID) error { return c.cancelRun(entryID, runID) }
+// CancelJobRun ...
+func (c *Cron) CancelJobRun(entryID EntryID, runID RunID) error { return c.cancelRun(entryID, runID) }
 
 // Location gets the time zone location
 func (c *Cron) Location() *time.Location { return c.getLocation() }

@@ -292,7 +292,7 @@ func postIndexHandler(c *cron.Cron) http.HandlerFunc {
 		if formName == "cancelRun" {
 			entryID := cron.EntryID(r.PostFormValue("entryID"))
 			runID := cron.RunID(r.PostFormValue("runID"))
-			_ = c.CancelRun(entryID, runID)
+			_ = c.CancelJobRun(entryID, runID)
 		} else if formName == "removeEntry" {
 			entryID := cron.EntryID(r.PostFormValue("entryID"))
 			c.Remove(entryID)
@@ -478,7 +478,7 @@ func postEntryHandler(c *cron.Cron) http.HandlerFunc {
 			c.Disable(entryID)
 		} else if formName == "cancelRun" {
 			runID := cron.RunID(r.PostFormValue("runID"))
-			_ = c.CancelRun(entryID, runID)
+			_ = c.CancelJobRun(entryID, runID)
 		}
 		w.Header().Set("Location", "/entries/"+string(entryID))
 		w.WriteHeader(http.StatusSeeOther)
@@ -495,7 +495,7 @@ func getRunHandler(c *cron.Cron) http.HandlerFunc {
 			w.WriteHeader(http.StatusSeeOther)
 			return
 		}
-		jobRun, err := c.GetRun(entryID, runID)
+		jobRun, err := c.GetJobRun(entryID, runID)
 		if err != nil {
 			w.Header().Set("Location", "/")
 			w.WriteHeader(http.StatusSeeOther)
@@ -570,7 +570,7 @@ func postRunHandler(c *cron.Cron) http.HandlerFunc {
 			w.WriteHeader(http.StatusSeeOther)
 			return
 		}
-		jobRun, err := c.GetRun(entryID, runID)
+		jobRun, err := c.GetJobRun(entryID, runID)
 		if err != nil {
 			w.Header().Set("Location", "/")
 			w.WriteHeader(http.StatusSeeOther)
@@ -578,7 +578,7 @@ func postRunHandler(c *cron.Cron) http.HandlerFunc {
 		}
 		formName := r.PostFormValue("formName")
 		if formName == "cancelRun" {
-			_ = c.CancelRun(entry.ID, jobRun.RunID)
+			_ = c.CancelJobRun(entry.ID, jobRun.RunID)
 			w.Header().Set("Location", "/entries/"+string(entryID))
 			w.WriteHeader(http.StatusSeeOther)
 			return
