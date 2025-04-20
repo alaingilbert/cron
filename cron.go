@@ -259,13 +259,15 @@ func startCleanupThread(c *Cron) {
 			case <-c.ctx.Done():
 				return
 			}
+			now := c.clock.Now()
+			thresholdTime := now.Add(-keepCompletedRunsDur)
 			for v := range c.runningJobsMap.IterValues() {
 				v.With(func(inner *jobRunsInner) {
 					for i := len(inner.completed) - 1; i >= 0; i-- {
-						now := c.clock.Now()
-						el := inner.completed[i]
-						if el.inner.Get().completedAt.Before(now.Add(-keepCompletedRunsDur)) {
-							delete(inner.mapping, el.runID)
+						completedJobRun := inner.completed[i]
+						completedAt := completedJobRun.inner.Get().completedAt
+						if completedAt.Before(thresholdTime) {
+							delete(inner.mapping, completedJobRun.runID)
 							inner.completed = slices.Delete(inner.completed, i, i+1)
 						}
 					}
