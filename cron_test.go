@@ -112,6 +112,21 @@ func TestRunNow(t *testing.T) {
 	assert.Equal(t, int32(1), calls.Load())
 }
 
+// Without using map: BenchmarkRunNow-12    	   36181	     30909 ns/op
+// With map         : BenchmarkRunNow-12    	  172833	      5946 ns/op
+func BenchmarkRunNow(b *testing.B) {
+	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	cron := New(WithClock(clock), WithParser(secondParser))
+	var id EntryID
+	for i := 0; i < 1000; i++ {
+		id, _ = cron.AddJob("* * * * * *", func() {})
+	}
+	cron.Start()
+	for i := 0; i < b.N; i++ {
+		_ = cron.RunNow(id)
+	}
+}
+
 func TestGetNextTime(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
 	cron := New(WithClock(clock), WithParser(secondParser))

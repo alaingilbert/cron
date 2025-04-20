@@ -320,10 +320,12 @@ func findByIDFn(id EntryID) func(e *Entry) bool {
 
 func (c *Cron) runNow(id EntryID) error {
 	if err := c.entries.WithE(func(entries *entries) error {
-		if entry, idx := utils.FindIdx((*entries).entriesHeap, findByIDFn(id)); entry != nil {
-			(*entry).Next = c.now()
-			reInsertEntry(&entries.entriesHeap, idx) // runNow
-			return nil
+		if entry, ok := (*entries).entriesMap[id]; ok {
+			if idx := slices.Index((*entries).entriesHeap, entry); idx != -1 {
+				(*entry).Next = c.now()
+				reInsertEntry(&entries.entriesHeap, idx) // runNow
+				return nil
+			}
 		}
 		return ErrEntryNotFound
 	}); err != nil {
