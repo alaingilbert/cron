@@ -649,7 +649,6 @@ func (c *Cron) jobRunsClb(clb func(jobRunsInner) []*jobRunStruct) (out []JobRun)
 func (c *Cron) jobRunsForClb(entryID EntryID, clb func(jobRunsInner) []*jobRunStruct) (out []JobRun, err error) {
 	if jobRuns, ok := c.runningJobsMap.Load(entryID); ok {
 		out = jobRunsClb(jobRuns, clb)
-		sortJobRunsPublic(out)
 		return
 	}
 	return nil, ErrEntryNotFound
