@@ -16,12 +16,12 @@ var fs embed.FS
 
 func GetMux(c *cron.Cron) *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /{$}", getIndexHandler(c))
-	mux.HandleFunc("POST /{$}", postIndexHandler(c))
-	mux.HandleFunc("GET /entries/{entryID}/{$}", getEntryHandler(c))
-	mux.HandleFunc("POST /entries/{entryID}/{$}", postEntryHandler(c))
-	mux.HandleFunc("GET /entries/{entryID}/runs/{runID}/{$}", getRunHandler(c))
-	mux.HandleFunc("POST /entries/{entryID}/runs/{runID}/{$}", postRunHandler(c))
+	mux.HandleFunc("GET /{$}", indexHandler(c))
+	mux.HandleFunc("POST /{$}", indexHandler(c))
+	mux.HandleFunc("GET /entries/{entryID}/{$}", entryHandler(c))
+	mux.HandleFunc("POST /entries/{entryID}/{$}", entryHandler(c))
+	mux.HandleFunc("GET /entries/{entryID}/runs/{runID}/{$}", runHandler(c))
+	mux.HandleFunc("POST /entries/{entryID}/runs/{runID}/{$}", runHandler(c))
 	return mux
 }
 
@@ -57,8 +57,30 @@ func redirectTo(w http.ResponseWriter, l string) {
 	w.WriteHeader(http.StatusSeeOther)
 }
 
-func getIndexHandler(c *cron.Cron) http.HandlerFunc {
+func indexHandler(c *cron.Cron) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			formName := r.PostFormValue("formName")
+			if formName == "cancelRun" {
+				entryID := cron.EntryID(r.PostFormValue("entryID"))
+				runID := cron.RunID(r.PostFormValue("runID"))
+				_ = c.CancelJobRun(entryID, runID)
+			} else if formName == "removeEntry" {
+				entryID := cron.EntryID(r.PostFormValue("entryID"))
+				c.Remove(entryID)
+			} else if formName == "enableEntry" {
+				entryID := cron.EntryID(r.PostFormValue("entryID"))
+				c.Enable(entryID)
+			} else if formName == "disableEntry" {
+				entryID := cron.EntryID(r.PostFormValue("entryID"))
+				c.Disable(entryID)
+			} else if formName == "runNow" {
+				entryID := cron.EntryID(r.PostFormValue("entryID"))
+				_ = c.RunNow(entryID)
+			}
+			redirectTo(w, "/")
+			return
+		}
 		var b bytes.Buffer
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
@@ -76,36 +98,31 @@ func getIndexHandler(c *cron.Cron) http.HandlerFunc {
 	}
 }
 
-func postIndexHandler(c *cron.Cron) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		formName := r.PostFormValue("formName")
-		if formName == "cancelRun" {
-			entryID := cron.EntryID(r.PostFormValue("entryID"))
-			runID := cron.RunID(r.PostFormValue("runID"))
-			_ = c.CancelJobRun(entryID, runID)
-		} else if formName == "removeEntry" {
-			entryID := cron.EntryID(r.PostFormValue("entryID"))
-			c.Remove(entryID)
-		} else if formName == "enableEntry" {
-			entryID := cron.EntryID(r.PostFormValue("entryID"))
-			c.Enable(entryID)
-		} else if formName == "disableEntry" {
-			entryID := cron.EntryID(r.PostFormValue("entryID"))
-			c.Disable(entryID)
-		} else if formName == "runNow" {
-			entryID := cron.EntryID(r.PostFormValue("entryID"))
-			_ = c.RunNow(entryID)
-		}
-		redirectTo(w, "/")
-	}
-}
-
-func getEntryHandler(c *cron.Cron) http.HandlerFunc {
+func entryHandler(c *cron.Cron) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		entryID := cron.EntryID(r.PathValue("entryID"))
 		entry, err := c.Entry(entryID)
 		if err != nil {
 			redirectTo(w, "/")
+			return
+		}
+		if r.Method == http.MethodPost {
+			formName := r.PostFormValue("formName")
+			if formName == "updateLabel" {
+				label := r.PostFormValue("label")
+				c.UpdateLabel(entryID, label)
+			} else if formName == "updateSpec" {
+				spec := r.PostFormValue("spec")
+				_ = c.UpdateScheduleWithSpec(entryID, spec)
+			} else if formName == "enableEntry" {
+				c.Enable(entryID)
+			} else if formName == "disableEntry" {
+				c.Disable(entryID)
+			} else if formName == "cancelRun" {
+				runID := cron.RunID(r.PostFormValue("runID"))
+				_ = c.CancelJobRun(entryID, runID)
+			}
+			redirectTo(w, "/entries/"+string(entryID))
 			return
 		}
 		var b bytes.Buffer
@@ -127,45 +144,24 @@ func getEntryHandler(c *cron.Cron) http.HandlerFunc {
 	}
 }
 
-func postEntryHandler(c *cron.Cron) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		entryID := cron.EntryID(r.PathValue("entryID"))
-		_, err := c.Entry(entryID)
-		if err != nil {
-			redirectTo(w, "/")
-			return
-		}
-		formName := r.PostFormValue("formName")
-		if formName == "updateLabel" {
-			label := r.PostFormValue("label")
-			c.UpdateLabel(entryID, label)
-		} else if formName == "updateSpec" {
-			spec := r.PostFormValue("spec")
-			_ = c.UpdateScheduleWithSpec(entryID, spec)
-		} else if formName == "enableEntry" {
-			c.Enable(entryID)
-		} else if formName == "disableEntry" {
-			c.Disable(entryID)
-		} else if formName == "cancelRun" {
-			runID := cron.RunID(r.PostFormValue("runID"))
-			_ = c.CancelJobRun(entryID, runID)
-		}
-		redirectTo(w, "/entries/"+string(entryID))
-	}
-}
-
-func getRunHandler(c *cron.Cron) http.HandlerFunc {
+func runHandler(c *cron.Cron) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		entryID := cron.EntryID(r.PathValue("entryID"))
 		runID := cron.RunID(r.PathValue("runID"))
-		entry, err := c.Entry(entryID)
-		if err != nil {
+		entry, entryErr := c.Entry(entryID)
+		jobRun, runErr := c.GetJobRun(entryID, runID)
+		if entryErr != nil || runErr != nil {
 			redirectTo(w, "/")
 			return
 		}
-		jobRun, err := c.GetJobRun(entryID, runID)
-		if err != nil {
-			redirectTo(w, "/")
+		if r.Method == http.MethodPost {
+			formName := r.PostFormValue("formName")
+			if formName == "cancelRun" {
+				_ = c.CancelJobRun(entry.ID, jobRun.RunID)
+				redirectTo(w, "/entries/"+string(entryID))
+				return
+			}
+			redirectTo(w, "/entries/"+string(entryID))
 			return
 		}
 		var b bytes.Buffer
@@ -180,29 +176,5 @@ func getRunHandler(c *cron.Cron) http.HandlerFunc {
 			"Menu":   template.HTML(getMenu(c)),
 		})
 		_, _ = w.Write(b.Bytes())
-	}
-}
-
-func postRunHandler(c *cron.Cron) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		entryID := cron.EntryID(r.PathValue("entryID"))
-		runID := cron.RunID(r.PathValue("runID"))
-		entry, err := c.Entry(entryID)
-		if err != nil {
-			redirectTo(w, "/")
-			return
-		}
-		jobRun, err := c.GetJobRun(entryID, runID)
-		if err != nil {
-			redirectTo(w, "/")
-			return
-		}
-		formName := r.PostFormValue("formName")
-		if formName == "cancelRun" {
-			_ = c.CancelJobRun(entry.ID, jobRun.RunID)
-			redirectTo(w, "/entries/"+string(entryID))
-			return
-		}
-		redirectTo(w, "/entries/"+string(entryID))
 	}
 }
