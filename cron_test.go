@@ -1211,7 +1211,7 @@ func TestRunningJobs(t *testing.T) {
 	advanceAndCycleNoWait(cron, time.Second)
 	<-c1
 	<-c2
-	jobs := cron.runningJobs()
+	jobs := cron.RunningJobs()
 	assert.Equal(t, 2, len(jobs))
 }
 
@@ -1267,4 +1267,31 @@ func TestCompletedJobsFor1(t *testing.T) {
 	advanceAndCycle(cron, time.Second)
 	jobs, _ := cron.CompletedJobRunsFor(id)
 	assert.Equal(t, 0, len(jobs))
+}
+
+func TestCancelRun(t *testing.T) {
+	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	cron := New(WithClock(clock), WithKeepCompletedRunsDur(0))
+	c1 := make(chan struct{})
+	id, _ := cron.AddJob("* * * * *", func(ctx context.Context) {
+		select {
+		case <-clock.AfterNotify(time.Minute, c1):
+		case <-ctx.Done():
+		}
+	})
+	cron.Start()
+	advanceAndCycleNoWait(cron, time.Minute)
+	<-c1
+	runs, _ := cron.RunningJobsFor(id)
+	runID := runs[0].RunID
+	_, err := cron.GetJobRun(id, runID)
+	assert.NoError(t, err)
+	_, err = cron.GetJobRun("do-not-exist", runID)
+	assert.ErrorIs(t, err, ErrEntryNotFound)
+	_, err = cron.GetJobRun(id, "do-not-exist")
+	assert.ErrorIs(t, err, ErrRunNotFound)
+	_ = cron.CancelJobRun(id, runID)
+	advanceAndCycle(cron, time.Second)
+	runs1, _ := cron.RunningJobsFor(id)
+	assert.Equal(t, 0, len(runs1))
 }

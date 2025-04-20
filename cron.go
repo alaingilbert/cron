@@ -608,7 +608,7 @@ func (c *Cron) getRunClb(entryID EntryID, runID RunID, clb func(*jobRunStruct)) 
 		}
 		return nil
 	}
-	return ErrRunNotFound
+	return ErrEntryNotFound
 }
 
 func (c *Cron) getRun(entryID EntryID, runID RunID) (JobRun, error) {
