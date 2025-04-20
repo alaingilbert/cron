@@ -67,6 +67,28 @@ func render(code int, name string, data any, w http.ResponseWriter) {
 	_, _ = w.Write(b.Bytes())
 }
 
+type indexData struct {
+	Css     template.CSS
+	Menu    template.HTML
+	JobRuns []cron.JobRun
+	Entries []cron.Entry
+}
+
+type entryData struct {
+	Css              template.CSS
+	Menu             template.HTML
+	Entry            cron.Entry
+	JobRuns          []cron.JobRun
+	CompletedJobRuns []cron.JobRun
+}
+
+type runData struct {
+	Css    template.CSS
+	Menu   template.HTML
+	JobRun cron.JobRun
+	Entry  cron.Entry
+}
+
 func indexHandler(c *cron.Cron) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
@@ -93,11 +115,11 @@ func indexHandler(c *cron.Cron) http.HandlerFunc {
 		}
 		jobRuns := c.RunningJobs()
 		entries := c.Entries()
-		data := map[string]any{
-			"JobRuns": jobRuns,
-			"Entries": entries,
-			"Css":     template.CSS(getCss()),
-			"Menu":    template.HTML(getMenu(c)),
+		data := indexData{
+			JobRuns: jobRuns,
+			Entries: entries,
+			Css:     template.CSS(getCss()),
+			Menu:    template.HTML(getMenu(c)),
 		}
 		render(http.StatusOK, "templates/index.gohtml", data, w)
 	}
@@ -134,12 +156,12 @@ func entryHandler(c *cron.Cron) http.HandlerFunc {
 		jobRuns, _ := c.RunningJobsFor(entryID)
 		completedJobRuns, _ := c.CompletedJobRunsFor(entryID)
 		slices.Reverse(completedJobRuns)
-		data := map[string]any{
-			"Entry":            entry,
-			"JobRuns":          jobRuns,
-			"CompletedJobRuns": completedJobRuns,
-			"Css":              template.CSS(getCss()),
-			"Menu":             template.HTML(getMenu(c)),
+		data := entryData{
+			Entry:            entry,
+			JobRuns:          jobRuns,
+			CompletedJobRuns: completedJobRuns,
+			Css:              template.CSS(getCss()),
+			Menu:             template.HTML(getMenu(c)),
 		}
 		render(http.StatusOK, "templates/entry.gohtml", data, w)
 	}
@@ -165,11 +187,11 @@ func runHandler(c *cron.Cron) http.HandlerFunc {
 			redirectTo(w, "/entries/"+string(entryID))
 			return
 		}
-		data := map[string]any{
-			"JobRun": jobRun,
-			"Entry":  entry,
-			"Css":    template.CSS(getCss()),
-			"Menu":   template.HTML(getMenu(c)),
+		data := runData{
+			JobRun: jobRun,
+			Entry:  entry,
+			Css:    template.CSS(getCss()),
+			Menu:   template.HTML(getMenu(c)),
 		}
 		render(http.StatusOK, "templates/run.gohtml", data, w)
 	}
