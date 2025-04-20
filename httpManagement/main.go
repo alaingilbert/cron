@@ -16,11 +16,11 @@ var fs embed.FS
 
 func GetMux(c *cron.Cron) *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /{$}", indexHandler(c))
+	mux.HandleFunc("GET  /{$}", indexHandler(c))
 	mux.HandleFunc("POST /{$}", indexHandler(c))
-	mux.HandleFunc("GET /entries/{entryID}/{$}", entryHandler(c))
+	mux.HandleFunc("GET  /entries/{entryID}/{$}", entryHandler(c))
 	mux.HandleFunc("POST /entries/{entryID}/{$}", entryHandler(c))
-	mux.HandleFunc("GET /entries/{entryID}/runs/{runID}/{$}", runHandler(c))
+	mux.HandleFunc("GET  /entries/{entryID}/runs/{runID}/{$}", runHandler(c))
 	mux.HandleFunc("POST /entries/{entryID}/runs/{runID}/{$}", runHandler(c))
 	return mux
 }
