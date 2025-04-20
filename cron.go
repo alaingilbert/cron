@@ -226,7 +226,7 @@ func (c *Cron) CompletedJobRunsFor(entryID EntryID) ([]JobRun, error) {
 
 // GetJobRun ...
 func (c *Cron) GetJobRun(entryID EntryID, runID RunID) (JobRun, error) {
-	return c.getRun(entryID, runID)
+	return c.getJobRun(entryID, runID)
 }
 
 // CancelJobRun ...
@@ -587,12 +587,7 @@ func (c *Cron) getEntry(id EntryID) (out Entry, err error) {
 	return out, err
 }
 
-func (c *Cron) entryIsRunning(id EntryID) (isRunning bool) {
-	jobRuns, ok := c.runningJobsMap.Load(id)
-	return ok && jobRunsClb(jobRuns, func(v jobRunsInner) bool { return len(v.running) > 0 })
-}
-
-func (c *Cron) getRunClb(entryID EntryID, runID RunID, clb func(*jobRunStruct)) error {
+func (c *Cron) getJobRunClb(entryID EntryID, runID RunID, clb func(*jobRunStruct)) error {
 	if jobRunsInnerMtx, ok := c.runningJobsMap.Load(entryID); ok {
 		if err := jobRunsInnerMtx.RWithE(func(jobRunsIn jobRunsInner) error {
 			if run, ok := jobRunsIn.mapping[runID]; ok {
@@ -608,18 +603,23 @@ func (c *Cron) getRunClb(entryID EntryID, runID RunID, clb func(*jobRunStruct)) 
 	return ErrEntryNotFound
 }
 
-func (c *Cron) getRun(entryID EntryID, runID RunID) (JobRun, error) {
+func (c *Cron) getJobRun(entryID EntryID, runID RunID) (JobRun, error) {
 	var jobRunPub JobRun
-	err := c.getRunClb(entryID, runID, func(run *jobRunStruct) {
+	err := c.getJobRunClb(entryID, runID, func(run *jobRunStruct) {
 		jobRunPub = run.export()
 	})
 	return jobRunPub, err
 }
 
 func (c *Cron) cancelRun(entryID EntryID, runID RunID) error {
-	return c.getRunClb(entryID, runID, func(run *jobRunStruct) {
+	return c.getJobRunClb(entryID, runID, func(run *jobRunStruct) {
 		(*run).cancel()
 	})
+}
+
+func (c *Cron) entryIsRunning(entryID EntryID) (isRunning bool) {
+	jobRuns, ok := c.runningJobsMap.Load(entryID)
+	return ok && jobRunsClb(jobRuns, func(v jobRunsInner) bool { return len(v.running) > 0 })
 }
 
 func exportJobRuns(runs []*jobRunStruct) (out []JobRun) {
