@@ -588,10 +588,8 @@ func (c *Cron) getEntry(id EntryID) (out Entry, err error) {
 }
 
 func (c *Cron) entryIsRunning(id EntryID) (isRunning bool) {
-	if jobRuns, ok := c.runningJobsMap.Load(id); ok {
-		jobRuns.RWith(func(v jobRunsInner) { isRunning = len(v.running) > 0 })
-	}
-	return
+	jobRuns, ok := c.runningJobsMap.Load(id)
+	return ok && jobRunsClb(jobRuns, func(v jobRunsInner) bool { return len(v.running) > 0 })
 }
 
 func (c *Cron) getRunClb(entryID EntryID, runID RunID, clb func(*jobRunStruct)) error {
@@ -631,16 +629,18 @@ func exportJobRuns(runs []*jobRunStruct) (out []JobRun) {
 	return
 }
 
-func jobRunsClb(jobRuns *mtx.RWMtx[jobRunsInner], clb func(jobRunsInner) []*jobRunStruct) (out []JobRun) {
-	jobRuns.RWith(func(v jobRunsInner) {
-		out = exportJobRuns(clb(v))
-	})
+func jobRunsClb[T any](jobRuns *mtx.RWMtx[jobRunsInner], clb func(jobRunsInner) T) (out T) {
+	jobRuns.RWith(func(v jobRunsInner) { out = clb(v) })
 	return
+}
+
+func jobRunsExportClb(jobRuns *mtx.RWMtx[jobRunsInner], clb func(jobRunsInner) []*jobRunStruct) []JobRun {
+	return exportJobRuns(jobRunsClb(jobRuns, clb))
 }
 
 func (c *Cron) jobRunsClb(clb func(jobRunsInner) []*jobRunStruct) (out []JobRun) {
 	for jobRuns := range c.runningJobsMap.IterValues() {
-		out = append(out, jobRunsClb(jobRuns, clb)...)
+		out = append(out, jobRunsExportClb(jobRuns, clb)...)
 	}
 	sortJobRunsPublic(out)
 	return
@@ -648,7 +648,7 @@ func (c *Cron) jobRunsClb(clb func(jobRunsInner) []*jobRunStruct) (out []JobRun)
 
 func (c *Cron) jobRunsForClb(entryID EntryID, clb func(jobRunsInner) []*jobRunStruct) (out []JobRun, err error) {
 	if jobRuns, ok := c.runningJobsMap.Load(entryID); ok {
-		out = jobRunsClb(jobRuns, clb)
+		out = jobRunsExportClb(jobRuns, clb)
 		return
 	}
 	return nil, ErrEntryNotFound
