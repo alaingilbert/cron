@@ -1321,3 +1321,11 @@ func TestJobRunEvents(t *testing.T) {
 	advanceAndCycleNoWait(cron, time.Second)
 	<-c3
 }
+
+func TestGetCleanupTS(t *testing.T) {
+	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	cron := New(WithClock(clock), WithKeepCompletedRunsDur(time.Second))
+	_, _ = cron.AddJob("* * * * *", func() {})
+	cron.Start()
+	assert.True(t, cron.GetCleanupTS().IsZero())
+}
