@@ -584,14 +584,11 @@ func (c *Cron) getEntry(id EntryID) (out Entry, err error) {
 	return out, err
 }
 
-func (c *Cron) entryIsRunning(id EntryID) bool {
-	jobRuns, ok := c.runningJobsMap.Load(id)
-	if !ok {
-		return false
+func (c *Cron) entryIsRunning(id EntryID) (isRunning bool) {
+	if jobRuns, ok := c.runningJobsMap.Load(id); ok {
+		jobRuns.RWith(func(v jobRunsInner) { isRunning = len(v.running) > 0 })
 	}
-	var count int
-	jobRuns.RWith(func(v jobRunsInner) { count = len(v.running) })
-	return count > 0
+	return
 }
 
 func (c *Cron) getRunClb(entryID EntryID, runID RunID, clb func(*jobRunStruct)) error {
