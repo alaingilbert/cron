@@ -163,6 +163,11 @@ var funcsMap = template.FuncMap{
 	"ShortDur": func(t time.Time) string { return utils.ShortDur(t) },
 }
 
+func redirectTo(w http.ResponseWriter, l string) {
+	w.Header().Set("Location", l)
+	w.WriteHeader(http.StatusSeeOther)
+}
+
 func getIndexHandler(c *cron.Cron) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var b bytes.Buffer
@@ -306,8 +311,7 @@ func postIndexHandler(c *cron.Cron) http.HandlerFunc {
 			entryID := cron.EntryID(r.PostFormValue("entryID"))
 			_ = c.RunNow(entryID)
 		}
-		w.Header().Set("Location", "/")
-		w.WriteHeader(http.StatusSeeOther)
+		redirectTo(w, "/")
 	}
 }
 
@@ -316,8 +320,7 @@ func getEntryHandler(c *cron.Cron) http.HandlerFunc {
 		entryID := cron.EntryID(r.PathValue("entryID"))
 		entry, err := c.Entry(entryID)
 		if err != nil {
-			w.Header().Set("Location", "/")
-			w.WriteHeader(http.StatusSeeOther)
+			redirectTo(w, "/")
 			return
 		}
 		var b bytes.Buffer
@@ -461,8 +464,7 @@ func postEntryHandler(c *cron.Cron) http.HandlerFunc {
 		entryID := cron.EntryID(r.PathValue("entryID"))
 		_, err := c.Entry(entryID)
 		if err != nil {
-			w.Header().Set("Location", "/")
-			w.WriteHeader(http.StatusSeeOther)
+			redirectTo(w, "/")
 			return
 		}
 		formName := r.PostFormValue("formName")
@@ -480,8 +482,7 @@ func postEntryHandler(c *cron.Cron) http.HandlerFunc {
 			runID := cron.RunID(r.PostFormValue("runID"))
 			_ = c.CancelJobRun(entryID, runID)
 		}
-		w.Header().Set("Location", "/entries/"+string(entryID))
-		w.WriteHeader(http.StatusSeeOther)
+		redirectTo(w, "/entries/"+string(entryID))
 	}
 }
 
@@ -491,14 +492,12 @@ func getRunHandler(c *cron.Cron) http.HandlerFunc {
 		runID := cron.RunID(r.PathValue("runID"))
 		entry, err := c.Entry(entryID)
 		if err != nil {
-			w.Header().Set("Location", "/")
-			w.WriteHeader(http.StatusSeeOther)
+			redirectTo(w, "/")
 			return
 		}
 		jobRun, err := c.GetJobRun(entryID, runID)
 		if err != nil {
-			w.Header().Set("Location", "/")
-			w.WriteHeader(http.StatusSeeOther)
+			redirectTo(w, "/")
 			return
 		}
 		var b bytes.Buffer
@@ -566,24 +565,20 @@ func postRunHandler(c *cron.Cron) http.HandlerFunc {
 		runID := cron.RunID(r.PathValue("runID"))
 		entry, err := c.Entry(entryID)
 		if err != nil {
-			w.Header().Set("Location", "/")
-			w.WriteHeader(http.StatusSeeOther)
+			redirectTo(w, "/")
 			return
 		}
 		jobRun, err := c.GetJobRun(entryID, runID)
 		if err != nil {
-			w.Header().Set("Location", "/")
-			w.WriteHeader(http.StatusSeeOther)
+			redirectTo(w, "/")
 			return
 		}
 		formName := r.PostFormValue("formName")
 		if formName == "cancelRun" {
 			_ = c.CancelJobRun(entry.ID, jobRun.RunID)
-			w.Header().Set("Location", "/entries/"+string(entryID))
-			w.WriteHeader(http.StatusSeeOther)
+			redirectTo(w, "/entries/"+string(entryID))
 			return
 		}
-		w.Header().Set("Location", "/entries/"+string(entryID))
-		w.WriteHeader(http.StatusSeeOther)
+		redirectTo(w, "/entries/"+string(entryID))
 	}
 }
