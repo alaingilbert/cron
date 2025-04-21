@@ -33,7 +33,7 @@ type Cron struct {
 	cancel               context.CancelFunc                           // Cancels the scheduler context
 	update               chan context.CancelFunc                      // Triggers update in the scheduler loop
 	running              atomic.Bool                                  // Indicates if the scheduler is currently running
-	location             mtx.RWMtx[*time.Location]                    // Thread-safe time zone location
+	location             atomic.Pointer[time.Location]                // Thread-safe time zone location
 	logger               *slog.Logger                                 // Logger for scheduler events, errors, and diagnostics
 	parser               ScheduleParser                               // Parses cron expressions into schedule objects
 	idFactory            EntryIDFactory                               // Generates a new unique EntryID for each scheduled job
@@ -117,7 +117,7 @@ func New(opts ...Option) *Cron {
 		cancel:               cancel,
 		runningJobsMap:       isync.Map[EntryID, *mtx.RWMtx[jobRunsInner]]{},
 		update:               make(chan context.CancelFunc),
-		location:             mtx.NewRWMtx(location),
+		location:             utils.NewAtomicPtr(location),
 		logger:               logger,
 		parser:               parser,
 		idFactory:            idFactory,
@@ -500,11 +500,11 @@ func (c *Cron) runDueEntries() {
 }
 
 func (c *Cron) getLocation() *time.Location {
-	return c.location.Get()
+	return c.location.Load()
 }
 
 func (c *Cron) setLocation(newLoc *time.Location) {
-	c.location.Set(newLoc)
+	c.location.Store(newLoc)
 	c.setEntriesNext()
 	c.entriesUpdated() // setLocation
 }
@@ -780,5 +780,5 @@ func (c *Cron) waitAllJobsCompleted() {
 
 // now returns current time in c location
 func (c *Cron) now() time.Time {
-	return c.clock.Now().In(c.Location())
+	return c.clock.Now().In(c.getLocation())
 }

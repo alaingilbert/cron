@@ -442,6 +442,28 @@ func TestStartNoop(t *testing.T) {
 	assert.False(t, started)
 }
 
+func TestLocationThreadSafe(t *testing.T) {
+	newLoc, _ := time.LoadLocation("Atlantic/Cape_Verde")
+	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
+	cron := New(WithClock(clock), WithLocation(time.UTC), WithParser(secondParser))
+	cron.Start()
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	go func() {
+		for i := 0; i < 100; i++ {
+			cron.SetLocation(newLoc)
+		}
+		wg.Done()
+	}()
+	go func() {
+		for i := 0; i < 100; i++ {
+			cron.getLocation()
+		}
+		wg.Done()
+	}()
+	wg.Wait()
+}
+
 // TestChangeLocationWhileRunning ...
 func TestChangeLocationWhileRunning(t *testing.T) {
 	newLoc, _ := time.LoadLocation("Atlantic/Cape_Verde")

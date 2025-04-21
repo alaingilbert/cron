@@ -9,6 +9,7 @@ import (
 	"math/rand/v2"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -228,4 +229,11 @@ func UuidV4Str() string {
 	hex.Encode(buf[16:20], uuid[8:10])
 	hex.Encode(buf[20:], uuid[10:])
 	return string(buf[:])
+}
+
+// NewAtomicPtr ...
+func NewAtomicPtr[T any](v *T) atomic.Pointer[T] {
+	var p atomic.Pointer[T]
+	p.Store(v)
+	return p
 }
