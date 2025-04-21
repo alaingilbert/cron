@@ -916,7 +916,7 @@ func triggerHooks(c *Cron, jobRun *jobRunStruct, typ JobEventType) {
 		ctx := jobRun.ctx
 		jr := jobRun.export()
 		entryID := jr.Entry.ID
-		for _, hook := range v.hooksMap[typ] {
+		runHook := func(hook Hook) {
 			fn := func() { hook.fn(ctx, c, jr) }
 			if hook.runAsync {
 				go fn()
@@ -924,13 +924,11 @@ func triggerHooks(c *Cron, jobRun *jobRunStruct, typ JobEventType) {
 				fn()
 			}
 		}
+		for _, hook := range v.hooksMap[typ] {
+			runHook(hook)
+		}
 		for _, hook := range v.entryHooksMap[entryID][typ] {
-			fn := func() { hook.fn(ctx, c, jr) }
-			if hook.runAsync {
-				go fn()
-			} else {
-				fn()
-			}
+			runHook(hook)
 		}
 	})
 }
