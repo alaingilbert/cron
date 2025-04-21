@@ -36,11 +36,11 @@ type Cron struct {
 	logger               *slog.Logger                                 // Logger for scheduler events, errors, and diagnostics
 	parser               ScheduleParser                               // Parses cron expressions into schedule objects
 	idFactory            EntryIDFactory                               // Generates a new unique EntryID for each scheduled job
-	ps                   *pubsub.PubSub[EntryID, JobEvent]            //
-	jobRunCreatedCh      chan JobRun                                  //
-	jobRunCompletedCh    chan JobRun                                  //
-	keepCompletedRunsDur mtx.Mtx[time.Duration]                       //
-	lastCleanupTS        mtx.Mtx[time.Time]                           //
+	ps                   *pubsub.PubSub[EntryID, JobEvent]            // PubSub for publishing and subscribing to job events
+	jobRunCreatedCh      chan JobRun                                  // Channel for receiving notifications when new job runs are created
+	jobRunCompletedCh    chan JobRun                                  // Channel for receiving notifications when job runs complete
+	keepCompletedRunsDur mtx.Mtx[time.Duration]                       // Duration to keep completed job runs before cleanup (thread-safe)
+	lastCleanupTS        mtx.Mtx[time.Time]                           // Timestamp of last completed job runs cleanup (thread-safe)
 }
 
 type jobRunsInner struct {
