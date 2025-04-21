@@ -5,6 +5,7 @@ import (
 	"github.com/alaingilbert/cron/internal/mtx"
 	"github.com/alaingilbert/cron/internal/utils"
 	"github.com/jonboulle/clockwork"
+	"sync"
 	"time"
 )
 
@@ -40,6 +41,38 @@ type jobRunInner struct {
 	panic       bool
 }
 
+var jobRunPool = sync.Pool{
+	New: func() any {
+		return &jobRunStruct{
+			inner: mtx.NewRWMtx(jobRunInner{
+				events: make([]JobEvent, 0, 3), // Pre-allocate event slice
+			}),
+		}
+	},
+}
+
+func acquireJobRun(ctx context.Context, clock clockwork.Clock, entry Entry) *jobRunStruct {
+	jr := jobRunPool.Get().(*jobRunStruct)
+	jr.ctx, jr.cancel = context.WithCancel(ctx)
+	jr.clock = clock
+	jr.entry = entry
+	jr.runID = RunID(utils.UuidV4Str())
+	jr.createdAt = clock.Now()
+	jr.inner.With(func(inner *jobRunInner) {
+		inner.events = inner.events[:0] // Reset slice
+		inner.startedAt = nil
+		inner.completedAt = nil
+		inner.error = nil
+		inner.panic = false
+	})
+	return jr
+}
+
+func releaseJobRun(jr *jobRunStruct) {
+	jr.cancel() // Ensure context is cleaned up
+	jobRunPool.Put(jr)
+}
+
 func (j *jobRunInner) addEvent(evt JobEvent) {
 	j.events = append(j.events, evt)
 }
@@ -55,17 +88,5 @@ func (j *jobRunStruct) export() JobRun {
 		CompletedAt: innerCopy.completedAt,
 		Error:       innerCopy.error,
 		Panic:       innerCopy.panic,
-	}
-}
-
-func newJobRun(ctx context.Context, clock clockwork.Clock, entry Entry) *jobRunStruct {
-	ctx, cancel := context.WithCancel(ctx)
-	return &jobRunStruct{
-		runID:     RunID(utils.UuidV4Str()),
-		entry:     entry,
-		clock:     clock,
-		createdAt: clock.Now(),
-		ctx:       ctx,
-		cancel:    cancel,
 	}
 }

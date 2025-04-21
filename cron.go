@@ -274,7 +274,8 @@ func startCleanupThread(c *Cron) {
 					})
 					if idx > 0 {
 						for i := 0; i < idx; i++ {
-							delete(inner.mapping, inner.completed[i].runID)
+							jobRun := inner.completed[i]
+							freeJobRun(inner, jobRun)
 						}
 						inner.completed = inner.completed[idx:]
 						inner.completedTS = inner.completedTS[idx:]
@@ -712,15 +713,20 @@ func (c *Cron) updateJobRuns(entryID EntryID, jobRun *jobRunStruct, isStarting b
 				(*v).completed = append((*v).completed, jobRun)
 				(*v).completedTS = append((*v).completedTS, *completedAt)
 			} else {
-				delete((*v).mapping, jobRun.runID)
+				freeJobRun(v, jobRun)
 			}
 		}
 	})
 }
 
+func freeJobRun(v *jobRunsInner, jobRun *jobRunStruct) {
+	delete((*v).mapping, jobRun.runID)
+	releaseJobRun(jobRun)
+}
+
 // startJob runs the given job in a new goroutine.
 func (c *Cron) startJob(entry Entry) {
-	jobRun := newJobRun(c.ctx, c.clock, entry)
+	jobRun := acquireJobRun(c.ctx, c.clock, entry)
 	c.runningJobsCount.Add(1)
 	go func() {
 		defer func() {
