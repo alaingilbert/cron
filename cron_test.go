@@ -9,6 +9,7 @@ import (
 	"github.com/alaingilbert/cron/internal/utils"
 	"io"
 	"log/slog"
+	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -51,7 +52,7 @@ func (d PanicJob) Run(context.Context, EntryID) error {
 
 func TestFuncPanicRecovery(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	cron.Start()
 	defer cron.Stop()
 	ch := make(chan string, 1)
@@ -69,6 +70,11 @@ func TestFuncPanicRecovery(t *testing.T) {
 
 func newNoOpLogger() *slog.Logger {
 	handler := slog.NewTextHandler(io.Discard, nil)
+	return slog.New(handler)
+}
+
+func newErrLogger() *slog.Logger {
+	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError})
 	return slog.New(handler)
 }
 
@@ -94,7 +100,7 @@ func TestLogError(t *testing.T) {
 func TestSetEntryActive(t *testing.T) {
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	id, _ := cron.AddJob("* * * * * ?", baseJob{&calls})
 	cron.Start()
 	assert.True(t, utils.First(cron.Entry(id)).Active)
@@ -109,7 +115,7 @@ func TestSetEntryActive(t *testing.T) {
 func TestRunNow(t *testing.T) {
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	id, _ := cron.AddJob("1 1 * * * *", baseJob{&calls})
 	cron.Start()
 	_ = cron.RunNow(id)
@@ -122,7 +128,7 @@ func TestRunNow(t *testing.T) {
 // With map         : BenchmarkRunNow-12    	  172833	      5946 ns/op
 func BenchmarkRunNow(b *testing.B) {
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	var id EntryID
 	for i := 0; i < 1000; i++ {
 		id, _ = cron.AddJob("* * * * * *", func() {})
@@ -135,7 +141,7 @@ func BenchmarkRunNow(b *testing.B) {
 
 func TestGetNextTime(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	_, _ = cron.AddJob("1 1 * * * *", func() {})
 	cron.Start()
 	assert.Equal(t, clock.Now().Add(61*time.Second), cron.GetNextTime())
@@ -144,7 +150,7 @@ func TestGetNextTime(t *testing.T) {
 func TestOnceJob(t *testing.T) {
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	cron.Start()
 	_, _ = cron.AddJob("* * * * * *", Once(baseJob{&calls}))
 	_, _ = cron.AddJob("* * * * * *", baseJob{&calls})
@@ -160,7 +166,7 @@ func TestOnceJob(t *testing.T) {
 func TestOnceAMonth(t *testing.T) {
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	_, _ = cron.AddJob("@monthly", baseJob{&calls})
 	cron.Start()
 	advanceAndCycle(cron, 16*24*time.Hour)
@@ -177,7 +183,7 @@ func TestOnceAMonth(t *testing.T) {
 // Start and stop cron with no entries.
 func TestNoEntries(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	cron.Start()
 	c1 := make(chan struct{})
 	go func() {
@@ -189,7 +195,7 @@ func TestNoEntries(t *testing.T) {
 
 func TestStopWait(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 1, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	c1 := make(chan struct{})
 	c2 := make(chan struct{})
 	_, _ = cron.AddJob("1 0 1 * * *", func() {
@@ -210,7 +216,7 @@ func TestStopWait(t *testing.T) {
 // Start, stop, then add an entry. Verify entry doesn't run.
 func TestStopCausesJobsToNotRun(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	cron.Start()
 	cron.Stop()
 	var calls atomic.Int32
@@ -222,7 +228,7 @@ func TestStopCausesJobsToNotRun(t *testing.T) {
 // Add a job, start cron, expect it runs.
 func TestAddBeforeRunning(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	var calls atomic.Int32
 	_, _ = cron.AddJob("* * * * * ?", baseJob{&calls})
 	cron.Start()
@@ -233,7 +239,7 @@ func TestAddBeforeRunning(t *testing.T) {
 // Start cron, add a job, expect it runs.
 func TestAddWhileRunning(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	cron.Start()
 	var calls atomic.Int32
 	_, _ = cron.AddJob("* * * * * ?", baseJob{&calls})
@@ -244,7 +250,7 @@ func TestAddWhileRunning(t *testing.T) {
 // Test for #34. Adding a job after calling start results in multiple job invocations
 func TestAddWhileRunningWithDelay(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	cron.Start()
 	advanceAndCycle(cron, time.Second)
 	advanceAndCycle(cron, time.Second)
@@ -258,7 +264,7 @@ func TestAddWhileRunningWithDelay(t *testing.T) {
 // Test timing with Entries.
 func TestSnapshotEntries(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	var calls atomic.Int32
 	_, _ = cron.AddJob("@every 2s", baseJob{&calls})
 	cron.Start()
@@ -272,7 +278,7 @@ func TestSnapshotEntries(t *testing.T) {
 
 func TestEntry(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	id, _ := cron.AddJob("@every 2s", func() {})
 	cron.Start()
 	entry1, _ := cron.Entry(id)
@@ -287,7 +293,7 @@ func TestEntry(t *testing.T) {
 // Also: Test that multiple jobs run in the same instant.
 func TestMultipleEntries(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	var calls atomic.Int32
 	_, _ = cron.AddJob("0 0 0 1 1 ?", baseJob{&calls})
 	_, _ = cron.AddJob("* * * * * ?", baseJob{&calls})
@@ -301,7 +307,7 @@ func TestMultipleEntries(t *testing.T) {
 // Test running the same job twice.
 func TestRunningJobTwice(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	var calls atomic.Int32
 	_, _ = cron.AddJob("0 0 0 1 1 ?", baseJob{&calls})
 	_, _ = cron.AddJob("0 0 0 31 12 ?", baseJob{&calls})
@@ -314,7 +320,7 @@ func TestRunningJobTwice(t *testing.T) {
 
 func TestRunningMultipleSchedules(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	var calls atomic.Int32
 	_, _ = cron.AddJob("0 0 0 1 1 ?", baseJob{&calls})
 	_, _ = cron.AddJob("0 0 0 31 12 ?", baseJob{&calls})
@@ -333,7 +339,7 @@ func TestLocalTimezone(t *testing.T) {
 	now := clock.Now().Local()
 	spec := fmt.Sprintf("%d,%d %d %d %d %d ?",
 		now.Second()+1, now.Second()+2, now.Minute(), now.Hour(), now.Day(), now.Month())
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	var calls atomic.Int32
 	_, _ = cron.AddJob(spec, baseJob{&calls})
 	cron.Start()
@@ -350,7 +356,7 @@ func TestNonLocalTimezone(t *testing.T) {
 	now := clock.Now().In(loc)
 	spec := fmt.Sprintf("%d,%d %d %d %d %d ?",
 		now.Second()+1, now.Second()+2, now.Minute(), now.Hour(), now.Day(), now.Month())
-	cron := New(WithClock(clock), WithLocation(loc), WithParser(secondParser))
+	cron := New(WithClock(clock), WithLocation(loc), WithParser(secondParser), WithLogger(newErrLogger()))
 	var calls atomic.Int32
 	_, _ = cron.AddJob(spec, baseJob{&calls})
 	cron.Start()
@@ -363,7 +369,7 @@ func TestNonLocalTimezone(t *testing.T) {
 // blocking the stop channel.
 func TestStopWithoutStart(t *testing.T) {
 	clock := clockwork.NewRealClock()
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	cron.Stop()
 }
 
@@ -388,7 +394,7 @@ func (t namedJob) Run(context.Context, *Cron, Entry) error {
 // Test that adding an invalid job spec returns an error
 func TestInvalidJobSpec(t *testing.T) {
 	clock := clockwork.NewRealClock()
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	_, err := cron.AddJob("this will not parse", func() {})
 	assert.Error(t, err, "expected an error with invalid spec, got nil")
 }
@@ -397,7 +403,7 @@ func TestInvalidJobSpec(t *testing.T) {
 func TestBlockingRun(t *testing.T) {
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	_, _ = cron.AddJob("* * * * * ?", baseJob{&calls})
 	ch := make(chan struct{})
 	go func() {
@@ -419,7 +425,7 @@ func TestBlockingRun(t *testing.T) {
 func TestBlockingRunNoop(t *testing.T) {
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	_, _ = cron.AddJob("* * * * * ?", baseJob{&calls})
 	c1 := make(chan struct{})
 	go func() {
@@ -435,7 +441,7 @@ func TestBlockingRunNoop(t *testing.T) {
 // Test that double-running is a no-op
 func TestStartNoop(t *testing.T) {
 	clock := clockwork.NewRealClock()
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	started := cron.Start()
 	assert.True(t, started)
 	started = cron.Start()
@@ -445,7 +451,7 @@ func TestStartNoop(t *testing.T) {
 func TestLocationThreadSafe(t *testing.T) {
 	newLoc, _ := time.LoadLocation("Atlantic/Cape_Verde")
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithLocation(time.UTC), WithParser(secondParser))
+	cron := New(WithClock(clock), WithLocation(time.UTC), WithParser(secondParser), WithLogger(newErrLogger()))
 	cron.Start()
 	wg := sync.WaitGroup{}
 	wg.Add(2)
@@ -468,7 +474,7 @@ func TestLocationThreadSafe(t *testing.T) {
 func TestChangeLocationWhileRunning(t *testing.T) {
 	newLoc, _ := time.LoadLocation("Atlantic/Cape_Verde")
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithLocation(time.UTC), WithParser(secondParser))
+	cron := New(WithClock(clock), WithLocation(time.UTC), WithParser(secondParser), WithLogger(newErrLogger()))
 	cron.Start()
 	_, _ = cron.AddJob("* * * * * ?", func() {})
 	_, _ = cron.AddJob("0 0 1 * * ?", func() {})
@@ -485,7 +491,7 @@ func TestChangeLocationWhileRunning(t *testing.T) {
 func TestChangeLocationWhileRunning2(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 2, 0, 0, 0, time.UTC))
 	newLoc := time.FixedZone("TMZ", 3600)
-	cron := New(WithClock(clock), WithLocation(time.UTC), WithParser(secondParser))
+	cron := New(WithClock(clock), WithLocation(time.UTC), WithParser(secondParser), WithLogger(newErrLogger()))
 	cron.Start()
 	_, _ = cron.AddJob("* * * * * ?", func() {})
 	_, _ = cron.AddJob("0 0 1 * * ?", func() {})
@@ -502,7 +508,7 @@ func TestChangeLocationWhileRunning2(t *testing.T) {
 func TestChangeLocationWhileRunning3(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC))
 	newLoc := time.FixedZone("TMZ", 2*3600)
-	cron := New(WithClock(clock), WithLocation(time.UTC), WithParser(secondParser))
+	cron := New(WithClock(clock), WithLocation(time.UTC), WithParser(secondParser), WithLogger(newErrLogger()))
 	cron.Start()
 	id1, _ := cron.AddJob("0 0 1 * * *", func() {})
 	id2, _ := cron.AddJob("0 0 3 * * *", func() {})
@@ -525,7 +531,7 @@ func TestChangeLocationWhileRunning3(t *testing.T) {
 func TestJob(t *testing.T) {
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 1, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	_, _ = cron.AddJob("0 0 0 30 Feb ?", namedJob{&calls, "job5"}) // invalid spec (Next will be zero time)
 	_, _ = cron.AddJob("0 0 0 1 1 ?", namedJob{&calls, "job3"})
 	_, _ = cron.AddJob("* * * * * ?", namedJob{&calls, "job0"})
@@ -550,7 +556,7 @@ func (*ZeroSchedule) Next(time.Time) time.Time {
 // Tests that job without time does not run
 func TestJobWithZeroTimeDoesNotRun(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	var calls atomic.Int32
 	_, _ = cron.AddJob("* * * * * *", baseJob{&calls})
 	_, _ = cron.Schedule(new(ZeroSchedule), FuncJob(func(context.Context, *Cron, Entry) error {
@@ -565,7 +571,7 @@ func TestJobWithZeroTimeDoesNotRun(t *testing.T) {
 func TestRemove(t *testing.T) {
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	id, _ := cron.AddJob("* * * * * *", baseJob{&calls})
 	assert.Equal(t, int32(0), calls.Load())
 	cron.Start()
@@ -590,7 +596,7 @@ func TestScheduleAfterRemoval(t *testing.T) {
 	// 250ms, but the bug would cause it to run instead 1s later.
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	hourJob, _ := cron.Schedule(Every(time.Hour), FuncJob(func(context.Context, *Cron, Entry) error { return nil }))
 	_, _ = cron.Schedule(Every(time.Second), FuncJob(func(context.Context, *Cron, Entry) error {
 		switch calls.Load() {
@@ -619,7 +625,7 @@ func TestScheduleAfterRemoval(t *testing.T) {
 func TestTwoCrons(t *testing.T) {
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	_, _ = cron.AddJob("1 * * * * *", baseJob{&calls})
 	_, _ = cron.AddJob("3 * * * * *", baseJob{&calls})
 	assert.Equal(t, int32(0), calls.Load())
@@ -635,7 +641,7 @@ func TestTwoCrons(t *testing.T) {
 func TestMultipleCrons(t *testing.T) {
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	_, _ = cron.AddJob("1 * * * * *", baseJob{&calls}) // #1
 	_, _ = cron.AddJob("* * * * * *", baseJob{&calls}) // #2
 	_, _ = cron.AddJob("3 * * * * *", baseJob{&calls}) // #3
@@ -658,7 +664,7 @@ func TestMultipleCrons(t *testing.T) {
 func TestSetEntriesNext(t *testing.T) {
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 58, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	_, _ = cron.AddJob("*/5 * * * * *", baseJob{&calls})
 	assert.Equal(t, int32(0), calls.Load())
 	cron.Start()
@@ -671,7 +677,7 @@ func TestSetEntriesNext(t *testing.T) {
 
 func TestWithID(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 58, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	_, err := cron.AddJob("* * * * * *", func() {}, WithID("some_id"))
 	assert.NoError(t, err)
 	_, err = cron.AddJob("* * * * * *", func() {}, WithID("some_id"))
@@ -682,7 +688,7 @@ func TestWithID(t *testing.T) {
 
 func TestNextIDIsThreadSafe(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	wg := sync.WaitGroup{}
 	wg.Add(1000)
 	for i := 0; i < 1000; i++ {
@@ -706,7 +712,7 @@ func TestNextIDIsThreadSafe(t *testing.T) {
 // With hashmap   : `BenchmarkAddJob-12    	  437586	      2766 ns/op`
 func BenchmarkAddJob(b *testing.B) {
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	for i := 0; i < b.N; i++ {
 		_, _ = cron.AddJob("* * * * * *", func() {})
 	}
@@ -714,7 +720,7 @@ func BenchmarkAddJob(b *testing.B) {
 
 func TestLabelEntryOption(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	_, _ = cron.AddJob("* * * * * *", func() {}, Label("#1"))
 	entries := cron.Entries()
 	assert.Equal(t, "#1", entries[0].Label)
@@ -867,7 +873,7 @@ func TestWrappers(t *testing.T) {
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
 	wrapVoid := func(any) error { return nil }
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	fn1ID, _ := cron.AddJob("* * * * * *", func() { calls.Add(1) })
 	_, _ = cron.AddJob("* * * * * *", func(context.Context) { calls.Add(1) })
 	_, _ = cron.AddJob("* * * * * *", func(*Cron) { calls.Add(1) })
@@ -948,7 +954,7 @@ func TestWrappers(t *testing.T) {
 func TestEntryOption(t *testing.T) {
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	_, _ = cron.AddJob("1 1 * * * *", baseJob{&calls}, WithNext(clock.Now()))
 	_, _ = cron.AddJob("1 1 * * * *", baseJob{&calls}, RunOnStart)
 	disabledID, _ := cron.AddJob("1 1 * * * *", baseJob{&calls}, Disabled)
@@ -960,7 +966,7 @@ func TestEntryOption(t *testing.T) {
 
 func TestWithContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	cron := New(WithContext(ctx), WithParser(secondParser))
+	cron := New(WithContext(ctx), WithParser(secondParser), WithLogger(newErrLogger()))
 	_, _ = cron.AddJob("* * * * * ?", func() {})
 	cancel()
 	cron.Run()
@@ -970,7 +976,7 @@ func TestWithContext(t *testing.T) {
 func TestAddEntry(t *testing.T) {
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	id, _ := cron.AddJob("* * * * * ?", baseJob{&calls})
 	entry, _ := cron.Entry(id)
 	entry.ID = "new-id"
@@ -983,7 +989,7 @@ func TestAddEntry(t *testing.T) {
 func TestAddJob1(t *testing.T) {
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	_, _ = cron.AddJob1("* * * * * ?", baseJob{&calls})
 	cron.Start()
 	advanceAndCycle(cron, time.Second)
@@ -992,7 +998,7 @@ func TestAddJob1(t *testing.T) {
 
 func TestIsRunning(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 59, 59, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	c1 := make(chan struct{})
 	id, _ := cron.AddJob("0 0 * * * *", func() {
 		clock.SleepNotify(time.Minute, c1)
@@ -1010,7 +1016,7 @@ func TestIsRunning(t *testing.T) {
 func TestUpdateScheduleWithSpec(t *testing.T) {
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	id, _ := cron.AddJob1("0 0 1 * * *", baseJob{&calls})
 	cron.Start()
 	advanceAndCycle(cron, time.Second)
@@ -1027,7 +1033,7 @@ func TestUpdateScheduleWithSpec(t *testing.T) {
 func TestUpdateSchedule(t *testing.T) {
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	id, _ := cron.AddJob1("0 0 1 * * *", baseJob{&calls})
 	cron.Start()
 	advanceAndCycle(cron, time.Second)
@@ -1043,7 +1049,7 @@ func TestUpdateSchedule(t *testing.T) {
 
 func TestUpdateLabel(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	id, _ := cron.AddJob("0 0 1 * * *", func() {}, Label("original"))
 	cron.Start()
 	entry, _ := cron.getEntry(id)
@@ -1055,7 +1061,7 @@ func TestUpdateLabel(t *testing.T) {
 
 func TestDisabledIgnoredByGetNextTime(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	_, _ = cron.AddJob("* * * * * *", func() {}, Disabled)
 	cron.Start()
 	assert.True(t, cron.GetNextTime().IsZero())
@@ -1064,7 +1070,7 @@ func TestDisabledIgnoredByGetNextTime(t *testing.T) {
 func TestWithTimeout(t *testing.T) {
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 59, 59, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	c1 := make(chan struct{})
 	c2 := make(chan struct{})
 	_, _ = cron.AddJob("0 0 1 * * *", WithTimeout(time.Minute, func(ctx context.Context) {
@@ -1091,7 +1097,7 @@ func TestWithTimeout(t *testing.T) {
 func TestWithDeadline(t *testing.T) {
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 59, 59, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	c1 := make(chan struct{})
 	c2 := make(chan struct{})
 	_, _ = cron.AddJob("0 0 1 * * *", WithDeadline(time.Date(2000, 1, 1, 1, 1, 0, 0, time.UTC), func(ctx context.Context) {
@@ -1118,7 +1124,6 @@ func TestWithDeadline(t *testing.T) {
 func TestEventsString(t *testing.T) {
 	assert.Equal(t, "Start", Start.String())
 	assert.Equal(t, "Completed", Completed.String())
-	assert.Equal(t, "CompletedNoErr", CompletedNoErr.String())
 	assert.Equal(t, "CompletedErr", CompletedErr.String())
 	assert.Equal(t, "CompletedPanic", CompletedPanic.String())
 	assert.Equal(t, "Unknown", JobEventType(-3).String())
@@ -1127,13 +1132,11 @@ func TestEventsString(t *testing.T) {
 type EventListener struct {
 	nbStart          atomic.Int32
 	nbCompleted      atomic.Int32
-	nbCompletedNoErr atomic.Int32
 	nbCompletedErr   atomic.Int32
 	nbCompletedPanic atomic.Int32
 	startCh          chan struct{}
 	completedCh      chan struct{}
 	completedErrCh   chan struct{}
-	completedNoErrCh chan struct{}
 	completedPanicCh chan struct{}
 	cond             sync.Cond
 }
@@ -1143,7 +1146,6 @@ func NewEventListener(c *Cron, id EntryID) *EventListener {
 		startCh:          make(chan struct{}, 100),
 		completedCh:      make(chan struct{}, 100),
 		completedErrCh:   make(chan struct{}, 100),
-		completedNoErrCh: make(chan struct{}, 100),
 		completedPanicCh: make(chan struct{}, 100),
 		cond:             *sync.NewCond(&sync.Mutex{}),
 	}
@@ -1167,9 +1169,6 @@ func NewEventListener(c *Cron, id EntryID) *EventListener {
 			} else if payload.Msg.Typ == CompletedErr {
 				l.nbCompletedErr.Add(1)
 				utils.NonBlockingSend(l.completedErrCh, struct{}{})
-			} else if payload.Msg.Typ == CompletedNoErr {
-				l.nbCompletedNoErr.Add(1)
-				utils.NonBlockingSend(l.completedNoErrCh, struct{}{})
 			} else if payload.Msg.Typ == CompletedPanic {
 				l.nbCompletedPanic.Add(1)
 				utils.NonBlockingSend(l.completedPanicCh, struct{}{})
@@ -1189,11 +1188,9 @@ func NewEventListener(c *Cron, id EntryID) *EventListener {
 func (l *EventListener) NbStart() int32                    { return l.nbStart.Load() }
 func (l *EventListener) NbCompleted() int32                { return l.nbCompleted.Load() }
 func (l *EventListener) NbCompletedErr() int32             { return l.nbCompletedErr.Load() }
-func (l *EventListener) NbCompletedNoErr() int32           { return l.nbCompletedNoErr.Load() }
 func (l *EventListener) NbCompletedPanic() int32           { return l.nbCompletedPanic.Load() }
 func (l *EventListener) StartCh() <-chan struct{}          { return l.startCh }
 func (l *EventListener) CompletedCh() <-chan struct{}      { return l.completedCh }
-func (l *EventListener) CompletedNoErrCh() <-chan struct{} { return l.completedNoErrCh }
 func (l *EventListener) CompletedErrCh() <-chan struct{}   { return l.completedErrCh }
 func (l *EventListener) CompletedPanicCh() <-chan struct{} { return l.completedPanicCh }
 
@@ -1225,12 +1222,12 @@ func TestEvents(t *testing.T) {
 	advanceAndCycleNoWait(cron, 30*time.Second) // after 2m30s job is completed
 
 	// Wait until we receive all events (1 completed, 2 failed)
-	l.Wait(func() bool { return l.NbCompletedErr() == 2 && l.NbCompletedNoErr() == 1 })
+	l.Wait(func() bool { return l.NbCompletedErr() == 2 && l.NbCompleted() == 3 })
 }
 
 func TestRunningJobs(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	c1 := make(chan struct{})
 	c2 := make(chan struct{})
 	_, _ = cron.AddJob("* * * * * *", func() { clock.SleepNotify(time.Minute, c1) })
@@ -1245,7 +1242,7 @@ func TestRunningJobs(t *testing.T) {
 
 func TestRunningJobsFor(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	var calls atomic.Int32
 	c1 := make(chan struct{})
 	c2 := make(chan struct{})
@@ -1273,7 +1270,7 @@ func TestRunningJobsFor(t *testing.T) {
 
 func TestCompletedJobsFor(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	id, _ := cron.AddJob("* * * * * *", func() {})
 	cron.Start()
 	advanceAndCycle(cron, time.Second)
@@ -1287,7 +1284,7 @@ func TestCompletedJobsFor(t *testing.T) {
 
 func TestCompletedJobsFor1(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithParser(secondParser), WithKeepCompletedRunsDur(0))
+	cron := New(WithClock(clock), WithParser(secondParser), WithKeepCompletedRunsDur(0), WithLogger(newErrLogger()))
 	id, _ := cron.AddJob("* * * * * *", func() {})
 	cron.Start()
 	advanceAndCycle(cron, time.Second)
@@ -1299,7 +1296,7 @@ func TestCompletedJobsFor1(t *testing.T) {
 
 func TestCancelRun(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithKeepCompletedRunsDur(0))
+	cron := New(WithClock(clock), WithKeepCompletedRunsDur(0), WithLogger(newErrLogger()))
 	c1 := make(chan struct{})
 	id, _ := cron.AddJob("* * * * *", func(ctx context.Context) {
 		select {
@@ -1326,7 +1323,7 @@ func TestCancelRun(t *testing.T) {
 
 func TestJobRunEvents(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithKeepCompletedRunsDur(0))
+	cron := New(WithClock(clock), WithKeepCompletedRunsDur(0), WithLogger(newErrLogger()))
 	c0 := make(chan struct{})
 	_, _ = cron.AddJob("* * * * *", func() { clock.SleepNotify(time.Second, c0) })
 	cron.Start()
@@ -1352,7 +1349,7 @@ func TestJobRunEvents(t *testing.T) {
 
 func TestGetCleanupTS(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
-	cron := New(WithClock(clock), WithKeepCompletedRunsDur(time.Second))
+	cron := New(WithClock(clock), WithKeepCompletedRunsDur(time.Second), WithLogger(newErrLogger()))
 	_, _ = cron.AddJob("* * * * *", func() {})
 	cron.Start()
 	assert.True(t, cron.GetCleanupTS().IsZero())

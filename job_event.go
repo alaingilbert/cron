@@ -10,7 +10,6 @@ type JobEventType int
 const (
 	Start JobEventType = iota + 1
 	Completed
-	CompletedNoErr
 	CompletedErr
 	CompletedPanic
 )
@@ -21,8 +20,6 @@ func (e JobEventType) String() string {
 		return "Start"
 	case Completed:
 		return "Completed"
-	case CompletedNoErr:
-		return "CompletedNoErr"
 	case CompletedErr:
 		return "CompletedErr"
 	case CompletedPanic:

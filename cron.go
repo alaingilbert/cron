@@ -731,8 +731,6 @@ func (c *Cron) runWithRecovery(jobRun *jobRunStruct) {
 	if err := entry.job.Run(jobRun.ctx, c, entry); err != nil {
 		logger.Error("job error", "label", entry.Label, "entryID", entry.ID, "runID", jobRun.runID, "error", err)
 		makeEventErr(c, entry, jobRun, CompletedErr, err)
-	} else {
-		makeEvent(c, entry, jobRun, CompletedNoErr)
 	}
 }
 
@@ -753,8 +751,6 @@ func makeEventErr(c *Cron, entry Entry, jobRun *jobRunStruct, typ JobEventType, 
 		opt = func(inner *jobRunInner) { (*inner).panic = true }
 	case CompletedErr:
 		opt = func(inner *jobRunInner) { (*inner).error = err }
-	case CompletedNoErr:
-		opt = func(inner *jobRunInner) {}
 	}
 	evt := newJobEvent(typ, clock)
 	jobRun.inner.With(func(inner *jobRunInner) {
