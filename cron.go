@@ -587,19 +587,20 @@ func (c *Cron) getEntry(id EntryID) (out Entry, err error) {
 }
 
 func (c *Cron) getJobRunClb(entryID EntryID, runID RunID, clb func(*jobRunStruct)) error {
-	if jobRunsInnerMtx, ok := c.runningJobsMap.Load(entryID); ok {
-		if err := jobRunsInnerMtx.RWithE(func(jobRunsIn jobRunsInner) error {
-			if run, ok := jobRunsIn.mapping[runID]; ok {
-				clb(run)
-				return nil
-			}
-			return ErrJobRunNotFound
-		}); err != nil {
-			return err
-		}
-		return nil
+	jobRunsInnerMtx, ok := c.runningJobsMap.Load(entryID)
+	if !ok {
+		return ErrEntryNotFound
 	}
-	return ErrEntryNotFound
+	if err := jobRunsInnerMtx.RWithE(func(jobRunsIn jobRunsInner) error {
+		if run, ok := jobRunsIn.mapping[runID]; ok {
+			clb(run)
+			return nil
+		}
+		return ErrJobRunNotFound
+	}); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *Cron) getJobRun(entryID EntryID, runID RunID) (JobRun, error) {
