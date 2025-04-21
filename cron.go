@@ -44,30 +44,6 @@ type Cron struct {
 	hooks                mtx.RWMtx[hooksContainer]                    //
 }
 
-type HookID string
-
-func hookFunc(fn HookFn) hookStruct {
-	return hookStruct{
-		id:       HookID(utils.UuidV4Str()),
-		runAsync: true,
-		fn:       fn,
-	}
-}
-
-type HookFn func(context.Context, *Cron, HookID, JobRun)
-
-type hookStruct struct {
-	id       HookID
-	runAsync bool
-	fn       HookFn
-}
-
-type HookOption func(*hookStruct)
-
-func HookSync(hook *hookStruct) {
-	hook.runAsync = false
-}
-
 type hooksContainer struct {
 	hooksMap      map[JobEventType][]hookStruct
 	entryHooksMap map[EntryID]map[JobEventType][]hookStruct
