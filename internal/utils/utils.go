@@ -8,7 +8,9 @@ import (
 	"iter"
 	"math/rand/v2"
 	"reflect"
+	"runtime"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -236,4 +238,29 @@ func NewAtomicPtr[T any](v *T) atomic.Pointer[T] {
 	var p atomic.Pointer[T]
 	p.Store(v)
 	return p
+}
+
+// ParallelForEach ...
+func ParallelForEach[T any](s iter.Seq[T], workerCount int, fn func(T)) {
+	if workerCount <= 0 {
+		workerCount = runtime.NumCPU()
+	}
+	var wg sync.WaitGroup
+	ch := make(chan T, workerCount*2) // Buffered channel for pipelining
+	// Worker pool
+	wg.Add(workerCount)
+	for i := 0; i < workerCount; i++ {
+		go func() {
+			defer wg.Done()
+			for item := range ch {
+				fn(item)
+			}
+		}()
+	}
+	// Feed items to workers
+	for item := range s {
+		ch <- item
+	}
+	close(ch)
+	wg.Wait()
 }
