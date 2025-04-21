@@ -4,7 +4,6 @@ import (
 	"container/heap"
 	"context"
 	"errors"
-	"github.com/alaingilbert/cron/internal/pubsub"
 	"log/slog"
 	"runtime/debug"
 	"slices"
@@ -14,6 +13,7 @@ import (
 	"time"
 
 	"github.com/alaingilbert/cron/internal/mtx"
+	"github.com/alaingilbert/cron/internal/pubsub"
 	isync "github.com/alaingilbert/cron/internal/sync"
 	"github.com/alaingilbert/cron/internal/utils"
 	"github.com/jonboulle/clockwork"
