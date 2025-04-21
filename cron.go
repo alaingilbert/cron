@@ -208,10 +208,10 @@ func (c *Cron) OnEntryEvt(entryID EntryID, evt JobEventType, clb HookFn, opts ..
 // Works for both global and entry-specific hooks.
 func (c *Cron) RemoveHook(id HookID) { c.removeHook(id) }
 
-// EnableHook ...
+// EnableHook enables a previously disabled hook by its ID
 func (c *Cron) EnableHook(id HookID) { c.enableHook(id) }
 
-// DisableHook ...
+// DisableHook disables a previously enabled hook by its ID
 func (c *Cron) DisableHook(id HookID) { c.disableHook(id) }
 
 // GetHooks returns all registered hooks (both global and entry-specific)
