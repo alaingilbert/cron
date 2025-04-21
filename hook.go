@@ -12,8 +12,8 @@ type HookFn func(context.Context, *Cron, HookID, JobRun)
 // HookID is a unique identifier for a cron job hook.
 type HookID string
 
-func hookFunc(fn HookFn) hookStruct {
-	return hookStruct{
+func hookFunc(fn HookFn) *hookStruct {
+	return &hookStruct{
 		id:       HookID(utils.UuidV4Str()),
 		runAsync: true,
 		active:   true,
