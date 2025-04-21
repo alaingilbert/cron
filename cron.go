@@ -4,7 +4,6 @@ import (
 	"container/heap"
 	"context"
 	"errors"
-	"fmt"
 	"github.com/alaingilbert/cron/internal/pubsub"
 	"log/slog"
 	"runtime/debug"
@@ -716,20 +715,21 @@ func (c *Cron) startJob(entry Entry) {
 
 func (c *Cron) runWithRecovery(jobRun *jobRunStruct) {
 	entry := jobRun.entry
+	clock := c.clock
 	logger := c.logger
+	start := clock.Now()
 	defer func() {
 		if r := recover(); r != nil {
-			logger.Error("%v\n%s\n", r, string(debug.Stack()))
+			logger.Error("job panic", "label", entry.Label, "entryID", entry.ID, "runID", jobRun.runID, "error", r, "stack", string(debug.Stack()))
 			makeEvent(c, entry, jobRun, CompletedPanic)
 		}
+		logger.Info("job completed", "label", entry.Label, "entryID", entry.ID, "runID", jobRun.runID, "duration", clock.Since(start))
 		makeEvent(c, entry, jobRun, Completed)
 	}()
+	logger.Info("job starting", "label", entry.Label, "entryID", entry.ID, "runID", jobRun.runID)
 	makeEvent(c, entry, jobRun, Start)
 	if err := entry.job.Run(jobRun.ctx, c, entry); err != nil {
-		msg := fmt.Sprintf("error running job %s", entry.ID)
-		msg += utils.TernaryOrZero(entry.Label != "", " "+entry.Label)
-		msg += " : " + err.Error()
-		logger.Error(msg)
+		logger.Error("job error", "label", entry.Label, "entryID", entry.ID, "runID", jobRun.runID, "error", err)
 		makeEventErr(c, entry, jobRun, CompletedErr, err)
 	} else {
 		makeEvent(c, entry, jobRun, CompletedNoErr)
