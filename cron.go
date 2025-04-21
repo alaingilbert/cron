@@ -145,6 +145,9 @@ func (c *Cron) Start() (started bool) { return c.startAsync() }
 // A context is returned so the caller can wait for running jobs to complete.
 func (c *Cron) Stop() <-chan struct{} { return c.stop() }
 
+// Wait stops the cron and waits for all running jobs to complete before returning.
+func (c *Cron) Wait() { c.wait() }
+
 // AddJob adds a Job to the Cron to be run on the given schedule.
 func (c *Cron) AddJob(spec string, job IntoJob, opts ...EntryOption) (EntryID, error) {
 	return c.addJob(spec, job, opts...)
@@ -302,6 +305,10 @@ func (c *Cron) stop() <-chan struct{} {
 		close(ch)
 	}()
 	return ch
+}
+
+func (c *Cron) wait() {
+	<-c.stop()
 }
 
 func (c *Cron) startRunning() bool {
