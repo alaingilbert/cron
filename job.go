@@ -64,7 +64,7 @@ type Job30 interface {
 	Run(context.Context, *Cron, JobRun)
 }
 type Job31 interface {
-	Run(context.Context, *Cron, JobRun) error
+	Run(context.Context, *Cron, Entry) error
 }
 
 // FuncJob is a wrapper that turns a func() into a cron.Job
@@ -269,15 +269,7 @@ func (j *Job30Wrapper) Run(ctx context.Context, c *Cron, r JobRun) error {
 type Job31Wrapper struct{ Job31 }
 
 func (j *Job31Wrapper) Run(ctx context.Context, c *Cron, r JobRun) error {
-	return j.Job31.Run(ctx, c, r)
-}
-
-type Job32 interface{ Run(context.Context, *Cron, Entry) error }
-
-type Job32Wrapper struct{ Job32 }
-
-func (j *Job32Wrapper) Run(ctx context.Context, c *Cron, r JobRun) error {
-	return j.Job32.Run(ctx, c, r.Entry)
+	return j.Job31.Run(ctx, c, r.Entry)
 }
 
 type IntoJob any
@@ -527,8 +519,6 @@ func castIntoJob(v IntoJob) Job {
 		return &Job30Wrapper{j}
 	case Job31:
 		return &Job31Wrapper{j}
-	case Job32:
-		return &Job32Wrapper{j}
 	default:
 		panic(ErrUnsupportedJobType)
 	}

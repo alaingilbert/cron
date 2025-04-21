@@ -5,8 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/alaingilbert/cron/internal/pubsub"
-	"github.com/alaingilbert/cron/internal/utils"
 	"io"
 	"log/slog"
 	"os"
@@ -14,6 +12,9 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/alaingilbert/cron/internal/pubsub"
+	"github.com/alaingilbert/cron/internal/utils"
 
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
@@ -865,6 +866,58 @@ func (j jw23) Run(context.Context, *Cron, Entry) {
 	j.calls.Add(1)
 }
 
+type jw24 struct{ calls *atomic.Int32 }
+
+func (j jw24) Run(JobRun) {
+	j.calls.Add(1)
+}
+
+type jw25 struct{ calls *atomic.Int32 }
+
+func (j jw25) Run(JobRun) error {
+	j.calls.Add(1)
+	return nil
+}
+
+type jw26 struct{ calls *atomic.Int32 }
+
+func (j jw26) Run(context.Context, JobRun) {
+	j.calls.Add(1)
+}
+
+type jw27 struct{ calls *atomic.Int32 }
+
+func (j jw27) Run(context.Context, JobRun) error {
+	j.calls.Add(1)
+	return nil
+}
+
+type jw28 struct{ calls *atomic.Int32 }
+
+func (j jw28) Run(*Cron, JobRun) {
+	j.calls.Add(1)
+}
+
+type jw29 struct{ calls *atomic.Int32 }
+
+func (j jw29) Run(*Cron, JobRun) error {
+	j.calls.Add(1)
+	return nil
+}
+
+type jw30 struct{ calls *atomic.Int32 }
+
+func (j jw30) Run(context.Context, *Cron, JobRun) {
+	j.calls.Add(1)
+}
+
+type jw31 struct{ calls *atomic.Int32 }
+
+func (j jw31) Run(context.Context, *Cron, Entry) error {
+	j.calls.Add(1)
+	return nil
+}
+
 func castEntry[T any](cron *Cron, id EntryID) bool {
 	return utils.TryCast[T](utils.First(cron.Entry(id)).Job())
 }
@@ -898,6 +951,14 @@ func TestWrappers(t *testing.T) {
 	_, _ = cron.AddJob("* * * * * *", func(*Cron, Entry) error { return wrapVoid(calls.Add(1)) })
 	_, _ = cron.AddJob("* * * * * *", func(context.Context, *Cron, EntryID) error { return wrapVoid(calls.Add(1)) })
 	_, _ = cron.AddJob("* * * * * *", func(context.Context, *Cron, Entry) error { return wrapVoid(calls.Add(1)) })
+	_, _ = cron.AddJob("* * * * * *", func(JobRun) { calls.Add(1) })
+	_, _ = cron.AddJob("* * * * * *", func(JobRun) error { return wrapVoid(calls.Add(1)) })
+	_, _ = cron.AddJob("* * * * * *", func(context.Context, JobRun) { calls.Add(1) })
+	_, _ = cron.AddJob("* * * * * *", func(context.Context, JobRun) error { return wrapVoid(calls.Add(1)) })
+	_, _ = cron.AddJob("* * * * * *", func(*Cron, JobRun) { calls.Add(1) })
+	_, _ = cron.AddJob("* * * * * *", func(*Cron, JobRun) error { return wrapVoid(calls.Add(1)) })
+	_, _ = cron.AddJob("* * * * * *", func(context.Context, *Cron, JobRun) { calls.Add(1) })
+	_, _ = cron.AddJob("* * * * * *", func(context.Context, *Cron, JobRun) error { return wrapVoid(calls.Add(1)) })
 	jw1ID, _ := cron.AddJob("* * * * * *", jw1{&calls})
 	jw2ID, _ := cron.AddJob("* * * * * *", jw2{&calls})
 	jw3ID, _ := cron.AddJob("* * * * * *", jw3{&calls})
@@ -921,6 +982,14 @@ func TestWrappers(t *testing.T) {
 	jw21ID, _ := cron.AddJob("* * * * * *", jw21{&calls})
 	jw22ID, _ := cron.AddJob("* * * * * *", jw22{&calls})
 	jw23ID, _ := cron.AddJob("* * * * * *", jw23{&calls})
+	jw24ID, _ := cron.AddJob("* * * * * *", jw24{&calls})
+	jw25ID, _ := cron.AddJob("* * * * * *", jw25{&calls})
+	jw26ID, _ := cron.AddJob("* * * * * *", jw26{&calls})
+	jw27ID, _ := cron.AddJob("* * * * * *", jw27{&calls})
+	jw28ID, _ := cron.AddJob("* * * * * *", jw28{&calls})
+	jw29ID, _ := cron.AddJob("* * * * * *", jw29{&calls})
+	jw30ID, _ := cron.AddJob("* * * * * *", jw30{&calls})
+	jw32ID, _ := cron.AddJob("* * * * * *", jw31{&calls})
 	assert.Panics(t, func() { _, _ = cron.AddJob("* * * * * *", 1) }, ErrUnsupportedJobType)
 	cron.Start()
 	assert.True(t, castEntry[Job](cron, fn1ID))
@@ -947,8 +1016,16 @@ func TestWrappers(t *testing.T) {
 	assert.True(t, castEntry[jw21](cron, jw21ID))
 	assert.True(t, castEntry[jw22](cron, jw22ID))
 	assert.True(t, castEntry[jw23](cron, jw23ID))
+	assert.True(t, castEntry[jw24](cron, jw24ID))
+	assert.True(t, castEntry[jw25](cron, jw25ID))
+	assert.True(t, castEntry[jw26](cron, jw26ID))
+	assert.True(t, castEntry[jw27](cron, jw27ID))
+	assert.True(t, castEntry[jw28](cron, jw28ID))
+	assert.True(t, castEntry[jw29](cron, jw29ID))
+	assert.True(t, castEntry[jw30](cron, jw30ID))
+	assert.True(t, castEntry[jw31](cron, jw32ID))
 	advanceAndCycle(cron, time.Second)
-	assert.Equal(t, int32(47), calls.Load())
+	assert.Equal(t, int32(63), calls.Load())
 }
 
 func TestEntryOption(t *testing.T) {
