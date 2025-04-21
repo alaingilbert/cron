@@ -10,6 +10,7 @@
     <tr><td>Entry ID:</td><td><span class="monospace"><a href="/entries/{{ .Entry.ID }}">{{ .Entry.ID }}</a></span></td></tr>
     <tr><td>Label:</td><td>{{ if .Entry.ID }}{{ .Entry.Label }}{{ else }}-{{ end }}</td></tr>
     <tr><td>Spec:</td><td>{{ if .Entry.Spec }}{{ .Entry.Spec }}{{ else }}-{{ end }}</td></tr>
+    <tr><td>Error:</td><td>{{ if .JobRun.Error }}<span class="danger">{{ .JobRun.Error.Error }}</span>{{ else }}<span>-</span>{{ end }}</td></tr>
 </table>
 <div class="mb-1">
     <form method="POST">

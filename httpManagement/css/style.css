@@ -109,7 +109,7 @@ a {
 }
 .d-inline-block { display: inline-block; }
 .success { color: #0f0; }
-.danger { color: #f00; }
+.danger { color: #ff7777; }
 .mb-1 { margin-bottom: 10px; }
 small { color: #666; }
 .text-center { text-align: center; }
