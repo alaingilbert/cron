@@ -575,8 +575,9 @@ func (c *Cron) getEntries() (out []Entry) {
 	return
 }
 
-func (c *Cron) getEntry(id EntryID) (out Entry, err error) {
-	err = c.entries.RWithE(func(entries entries) error {
+func (c *Cron) getEntry(id EntryID) (Entry, error) {
+	var out Entry
+	err := c.entries.RWithE(func(entries entries) error {
 		if entry, ok := entries.entriesMap[id]; ok {
 			out = *entry
 			return nil
