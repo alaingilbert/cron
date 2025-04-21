@@ -417,6 +417,25 @@ func N(n int, j IntoJob) Job {
 	return NWrapper(n)(j)
 }
 
+func ThresholdClbWrapper(threshold time.Duration, clb func(ctx context.Context, c *Cron, e Entry, threshold, dur time.Duration, err error)) JobWrapper {
+	return func(job IntoJob) Job {
+		return FuncJob(func(ctx context.Context, c *Cron, e Entry) error {
+			start := c.clock.Now()
+			err := J(job).Run(ctx, c, e)
+			dur := c.clock.Since(start)
+			if dur > threshold {
+				clb(ctx, c, e, threshold, dur, err)
+			}
+			return err
+		})
+	}
+}
+
+// ThresholdClb execute a callback if the job runs longer than the specified threshold.
+func ThresholdClb(threshold time.Duration, j IntoJob, clb func(ctx context.Context, c *Cron, e Entry, threshold, dur time.Duration, err error)) Job {
+	return ThresholdClbWrapper(threshold, clb)(j)
+}
+
 // SkipIfStillRunning skips an invocation of the Job if a previous invocation is still running.
 func SkipIfStillRunning(j IntoJob) Job {
 	var running atomic.Bool
