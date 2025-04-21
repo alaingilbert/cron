@@ -908,13 +908,11 @@ func makeEventErr(c *Cron, entry Entry, jobRun *jobRunStruct, typ JobEventType, 
 		inner.addEvent(evt)
 	})
 	c.ps.Pub(entry.ID, evt)
-	triggerHooks(c, jobRun, typ)
+	triggerHooks(c, jobRun.ctx, jobRun.export(), typ)
 }
 
-func triggerHooks(c *Cron, jobRun *jobRunStruct, typ JobEventType) {
+func triggerHooks(c *Cron, ctx context.Context, jr JobRun, evtType JobEventType) {
 	c.hooks.RWith(func(v hooksContainer) {
-		ctx := jobRun.ctx
-		jr := jobRun.export()
 		entryID := jr.Entry.ID
 		runHook := func(hook Hook) {
 			fn := func() { hook.fn(ctx, c, hook.id, jr) }
@@ -924,10 +922,10 @@ func triggerHooks(c *Cron, jobRun *jobRunStruct, typ JobEventType) {
 				fn()
 			}
 		}
-		for _, hook := range v.hooksMap[typ] {
+		for _, hook := range v.hooksMap[evtType] {
 			runHook(hook)
 		}
-		for _, hook := range v.entryHooksMap[entryID][typ] {
+		for _, hook := range v.entryHooksMap[entryID][evtType] {
 			runHook(hook)
 		}
 	})
