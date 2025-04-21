@@ -479,24 +479,27 @@ func (c *Cron) removeHook(id HookID) {
 	})
 }
 
+func getHookByID(container hooksContainer, id HookID) *hookMeta {
+	for hook := range container.iterHooks() {
+		if hook.hook.id == id {
+			return &hook
+		}
+	}
+	return nil
+}
+
 func (c *Cron) enableHook(id HookID) {
 	c.hooks.With(func(v *hooksContainer) {
-		for hook := range v.iterHooks() {
-			if hook.hook.id == id {
-				(*hook.hook).active = true
-				return
-			}
+		if hook := getHookByID(*v, id); hook != nil {
+			(*hook.hook).active = true
 		}
 	})
 }
 
 func (c *Cron) disableHook(id HookID) {
 	c.hooks.With(func(v *hooksContainer) {
-		for hook := range v.iterHooks() {
-			if hook.hook.id == id {
-				(*hook.hook).active = false
-				return
-			}
+		if hook := getHookByID(*v, id); hook != nil {
+			(*hook.hook).active = false
 		}
 	})
 }
@@ -513,11 +516,9 @@ func (c *Cron) getHooks() (out []Hook) {
 func (c *Cron) getHook(id HookID) (Hook, error) {
 	var out Hook
 	if err := c.hooks.RWithE(func(v hooksContainer) error {
-		for hook := range v.iterHooks() {
-			if hook.hook.id == id {
-				out = hook.hook.export(hook.evt, hook.entryID)
-				return nil
-			}
+		if hook := getHookByID(v, id); hook != nil {
+			out = hook.hook.export(hook.evt, hook.entryID)
+			return nil
 		}
 		return ErrHookNotFound
 	}); err != nil {
