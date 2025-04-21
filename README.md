@@ -166,7 +166,7 @@ func main() {
 	c.Disable(disabledID)
 
 	// You can specify the ID to use for a job
-	_, _ = c.AddJob("* * * * * *", func(id cron.EntryID) {
+	customJobIDEntryID, _ := c.AddJob("* * * * * *", func(id cron.EntryID) {
 		fmt.Printf("this job has a custom ID: %s\n", id)
 	}, cron.WithID("my-job-id"))
 
@@ -181,6 +181,22 @@ func main() {
 		fmt.Println(entry.Prev.UnixNano(), time.Now().UnixNano())
 	})
 
+	// Hooking
+	// It is possible to add hooks for global job events
+	c.OnJobStart(func(ctx context.Context, c *cron.Cron, id cron.HookID, run cron.JobRun) {
+		fmt.Println("job started", run.Entry.ID, run.RunID)
+	})
+	// You can also make a hook for a specific entry
+	// See also OnJobCompleted / OnEntryJobCompleted
+	c.OnEntryJobStart(customJobIDEntryID, func(ctx context.Context, c *cron.Cron, id cron.HookID, run cron.JobRun) {
+		fmt.Println("job started", run.Entry.ID, run.RunID)
+	})
+	// You can make hook for all JobEventType (JobStart, JobCompleted, JobErr, JobPanic)
+	// using OnEvt / OnEntryEvt
+	c.OnEvt(cron.JobPanic, func(ctx context.Context, c *cron.Cron, id cron.HookID, run cron.JobRun) {
+		fmt.Println("job panic", run.Entry.ID, run.RunID)
+	})
+	
 	c.Start()
 
 	// This library comes with a complete web interface administration tool (optional)
