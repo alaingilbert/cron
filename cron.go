@@ -416,9 +416,7 @@ func (c *Cron) isRunning() bool {
 
 func (c *Cron) onEvt(evt JobEventType, clb HookFn, opts ...HookOption) HookID {
 	hook := HookFunc(clb)
-	for _, opt := range opts {
-		opt(&hook)
-	}
+	utils.ApplyOptions(&hook, opts...)
 	c.hooks.With(func(v *hooksContainer) {
 		v.hooksMap[evt] = append(v.hooksMap[evt], hook)
 	})
@@ -427,9 +425,7 @@ func (c *Cron) onEvt(evt JobEventType, clb HookFn, opts ...HookOption) HookID {
 
 func (c *Cron) onEntryEvt(entryID EntryID, evt JobEventType, clb HookFn, opts ...HookOption) HookID {
 	hook := HookFunc(clb)
-	for _, opt := range opts {
-		opt(&hook)
-	}
+	utils.ApplyOptions(&hook, opts...)
 	c.hooks.With(func(v *hooksContainer) {
 		if v.entryHooksMap[entryID] == nil {
 			v.entryHooksMap[entryID] = make(map[JobEventType][]Hook)
