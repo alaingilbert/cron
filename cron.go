@@ -62,6 +62,12 @@ type Hook struct {
 	fn       HookFn
 }
 
+type HookOption func(*Hook)
+
+func HookSync(hook *Hook) {
+	hook.runAsync = false
+}
+
 type hooksContainer struct {
 	hooksMap      map[JobEventType][]Hook
 	entryHooksMap map[EntryID]map[JobEventType][]Hook
@@ -180,13 +186,15 @@ func (c *Cron) Wait() { c.wait() }
 // OnEvt registers a global hook function for a specific job event type.
 // The hook will be called whenever the specified event occurs for any job.
 // Returns the HookID for later removal.
-func (c *Cron) OnEvt(evt JobEventType, clb HookFn) HookID { return c.onEvt(evt, clb) }
+func (c *Cron) OnEvt(evt JobEventType, clb HookFn, opts ...HookOption) HookID {
+	return c.onEvt(evt, clb, opts...)
+}
 
 // OnEntryEvt registers a hook function for a specific job event type on a specific entry.
 // The hook will be called only when the specified event occurs for the given entry.
 // Returns the HookID for later removal.
-func (c *Cron) OnEntryEvt(entryID EntryID, evt JobEventType, clb HookFn) HookID {
-	return c.onEntryEvt(entryID, evt, clb)
+func (c *Cron) OnEntryEvt(entryID EntryID, evt JobEventType, clb HookFn, opts ...HookOption) HookID {
+	return c.onEntryEvt(entryID, evt, clb, opts...)
 }
 
 // RemoveHook removes a previously registered hook by its HookID.
@@ -196,25 +204,27 @@ func (c *Cron) RemoveHook(id HookID) { c.removeHook(id) }
 // OnJobStart registers a global hook function for job start events.
 // The hook will be called whenever any job starts.
 // Returns the HookID for later removal.
-func (c *Cron) OnJobStart(clb HookFn) HookID { return c.onJobStart(clb) }
+func (c *Cron) OnJobStart(clb HookFn, opts ...HookOption) HookID { return c.onJobStart(clb, opts...) }
 
 // OnEntryJobStart registers a hook function for job start events on a specific entry.
 // The hook will be called only when the given entry's job starts.
 // Returns the HookID for later removal.
-func (c *Cron) OnEntryJobStart(entryID EntryID, clb HookFn) HookID {
-	return c.onEntryJobStart(entryID, clb)
+func (c *Cron) OnEntryJobStart(entryID EntryID, clb HookFn, opts ...HookOption) HookID {
+	return c.onEntryJobStart(entryID, clb, opts...)
 }
 
 // OnJobCompleted registers a global hook function for job completion events.
 // The hook will be called whenever any job completes.
 // Returns the HookID for later removal.
-func (c *Cron) OnJobCompleted(clb HookFn) HookID { return c.onJobCompleted(clb) }
+func (c *Cron) OnJobCompleted(clb HookFn, opts ...HookOption) HookID {
+	return c.onJobCompleted(clb, opts...)
+}
 
 // OnEntryJobCompleted registers a hook function for job completion events on a specific entry.
 // The hook will be called only when the given entry's job completes.
 // Returns the HookID for later removal.
-func (c *Cron) OnEntryJobCompleted(entryID EntryID, clb HookFn) HookID {
-	return c.onEntryJobCompleted(entryID, clb)
+func (c *Cron) OnEntryJobCompleted(entryID EntryID, clb HookFn, opts ...HookOption) HookID {
+	return c.onEntryJobCompleted(entryID, clb, opts...)
 }
 
 // AddJob adds a Job to the Cron to be run on the given schedule.
@@ -404,16 +414,22 @@ func (c *Cron) isRunning() bool {
 	return c.running.Load()
 }
 
-func (c *Cron) onEvt(evt JobEventType, clb HookFn) HookID {
+func (c *Cron) onEvt(evt JobEventType, clb HookFn, opts ...HookOption) HookID {
 	hook := HookFunc(clb)
+	for _, opt := range opts {
+		opt(&hook)
+	}
 	c.hooks.With(func(v *hooksContainer) {
 		v.hooksMap[evt] = append(v.hooksMap[evt], hook)
 	})
 	return hook.id
 }
 
-func (c *Cron) onEntryEvt(entryID EntryID, evt JobEventType, clb HookFn) HookID {
+func (c *Cron) onEntryEvt(entryID EntryID, evt JobEventType, clb HookFn, opts ...HookOption) HookID {
 	hook := HookFunc(clb)
+	for _, opt := range opts {
+		opt(&hook)
+	}
 	c.hooks.With(func(v *hooksContainer) {
 		if v.entryHooksMap[entryID] == nil {
 			v.entryHooksMap[entryID] = make(map[JobEventType][]Hook)
@@ -448,20 +464,20 @@ func (c *Cron) removeHook(id HookID) {
 	})
 }
 
-func (c *Cron) onJobStart(clb HookFn) HookID {
-	return c.onEvt(JobStart, clb)
+func (c *Cron) onJobStart(clb HookFn, opts ...HookOption) HookID {
+	return c.onEvt(JobStart, clb, opts...)
 }
 
-func (c *Cron) onEntryJobStart(entryID EntryID, clb HookFn) HookID {
-	return c.onEntryEvt(entryID, JobStart, clb)
+func (c *Cron) onEntryJobStart(entryID EntryID, clb HookFn, opts ...HookOption) HookID {
+	return c.onEntryEvt(entryID, JobStart, clb, opts...)
 }
 
-func (c *Cron) onJobCompleted(clb HookFn) HookID {
-	return c.onEvt(JobCompleted, clb)
+func (c *Cron) onJobCompleted(clb HookFn, opts ...HookOption) HookID {
+	return c.onEvt(JobCompleted, clb, opts...)
 }
 
-func (c *Cron) onEntryJobCompleted(entryID EntryID, clb HookFn) HookID {
-	return c.onEntryEvt(entryID, JobCompleted, clb)
+func (c *Cron) onEntryJobCompleted(entryID EntryID, clb HookFn, opts ...HookOption) HookID {
+	return c.onEntryEvt(entryID, JobCompleted, clb, opts...)
 }
 
 func (c *Cron) runNow(id EntryID) error {
