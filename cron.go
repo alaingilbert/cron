@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"runtime"
 	"runtime/debug"
 	"slices"
 	"sort"
@@ -262,10 +263,11 @@ func startCleanupThread(c *Cron) {
 			case <-c.ctx.Done():
 				return
 			}
-			var totalCleaned int
+			var totalCleaned atomic.Int32
 			start := c.clock.Now()
 			thresholdTime := start.Add(-keepCompletedRunsDur)
-			for v := range c.runningJobsMap.IterValues() {
+			workerCount := runtime.NumCPU()
+			utils.ParallelForEach(c.runningJobsMap.IterValues(), workerCount, func(v *mtx.RWMtx[jobRunsInner]) {
 				v.With(func(inner *jobRunsInner) {
 					idx := sort.Search(len(inner.completedTS), func(i int) bool {
 						return inner.completedTS[i].After(thresholdTime)
@@ -276,12 +278,12 @@ func startCleanupThread(c *Cron) {
 						}
 						inner.completed = inner.completed[idx:]
 						inner.completedTS = inner.completedTS[idx:]
-						totalCleaned += idx
+						totalCleaned.Add(int32(idx))
 					}
 				})
-			}
-			if totalCleaned > 0 {
-				c.logger.Debug("cleaned old runs", "count", totalCleaned, "duration", c.clock.Since(start))
+			})
+			if count := totalCleaned.Load(); count > 0 {
+				c.logger.Debug("cleaned old runs", "count", count, "workers", workerCount, "duration", c.clock.Since(start))
 			}
 			c.lastCleanupTS.Set(c.clock.Now())
 		}
