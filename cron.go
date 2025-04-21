@@ -3,6 +3,7 @@ package cron
 import (
 	"context"
 	"errors"
+	"iter"
 	"log/slog"
 	"runtime"
 	"runtime/debug"
@@ -47,6 +48,33 @@ type Cron struct {
 type hooksContainer struct {
 	hooksMap      map[JobEventType][]*hookStruct
 	entryHooksMap map[EntryID]map[JobEventType][]*hookStruct
+}
+
+type hookMeta struct {
+	hook    *hookStruct
+	evt     JobEventType
+	entryID *EntryID
+}
+
+func (c hooksContainer) iterHooks() iter.Seq[hookMeta] {
+	return func(yield func(hookMeta) bool) {
+		for evt, hooks := range c.hooksMap {
+			for _, hook := range hooks {
+				if !yield(hookMeta{hook, evt, nil}) {
+					return
+				}
+			}
+		}
+		for entryID, evtMap := range c.entryHooksMap {
+			for evt, hooks := range evtMap {
+				for _, hook := range hooks {
+					if !yield(hookMeta{hook, evt, &entryID}) {
+						return
+					}
+				}
+			}
+		}
+	}
 }
 
 type jobRunsInner struct {
@@ -453,18 +481,10 @@ func (c *Cron) removeHook(id HookID) {
 
 func (c *Cron) enableHook(id HookID) {
 	c.hooks.With(func(v *hooksContainer) {
-		for _, hooks := range v.hooksMap {
-			if hook, idx := utils.FindIdx(hooks, func(h *hookStruct) bool { return h.id == id }); idx != -1 {
-				(*hook).active = true
+		for hook := range v.iterHooks() {
+			if hook.hook.id == id {
+				(*hook.hook).active = true
 				return
-			}
-		}
-		for _, eventMap := range v.entryHooksMap {
-			for _, hooks := range eventMap {
-				if hook, idx := utils.FindIdx(hooks, func(h *hookStruct) bool { return h.id == id }); idx != -1 {
-					(*hook).active = true
-					return
-				}
 			}
 		}
 	})
@@ -472,18 +492,10 @@ func (c *Cron) enableHook(id HookID) {
 
 func (c *Cron) disableHook(id HookID) {
 	c.hooks.With(func(v *hooksContainer) {
-		for _, hooks := range v.hooksMap {
-			if hook, idx := utils.FindIdx(hooks, func(h *hookStruct) bool { return h.id == id }); idx != -1 {
-				(*hook).active = false
+		for hook := range v.iterHooks() {
+			if hook.hook.id == id {
+				(*hook.hook).active = false
 				return
-			}
-		}
-		for _, eventMap := range v.entryHooksMap {
-			for _, hooks := range eventMap {
-				if hook, idx := utils.FindIdx(hooks, func(h *hookStruct) bool { return h.id == id }); idx != -1 {
-					(*hook).active = false
-					return
-				}
 			}
 		}
 	})
@@ -491,17 +503,8 @@ func (c *Cron) disableHook(id HookID) {
 
 func (c *Cron) getHooks() (out []Hook) {
 	c.hooks.RWith(func(v hooksContainer) {
-		for evt, hooks := range v.hooksMap {
-			for _, hook := range hooks {
-				out = append(out, hook.export(evt, nil))
-			}
-		}
-		for entryID, hookEvt := range v.entryHooksMap {
-			for evt, hooks := range hookEvt {
-				for _, hook := range hooks {
-					out = append(out, hook.export(evt, &entryID))
-				}
-			}
+		for hook := range v.iterHooks() {
+			out = append(out, hook.hook.export(hook.evt, hook.entryID))
 		}
 	})
 	return
@@ -510,22 +513,10 @@ func (c *Cron) getHooks() (out []Hook) {
 func (c *Cron) getHook(id HookID) (Hook, error) {
 	var out Hook
 	if err := c.hooks.RWithE(func(v hooksContainer) error {
-		for evt, hooks := range v.hooksMap {
-			for _, hook := range hooks {
-				if hook.id == id {
-					out = hook.export(evt, nil)
-					return nil
-				}
-			}
-		}
-		for entryID, hookEvt := range v.entryHooksMap {
-			for evt, hooks := range hookEvt {
-				for _, hook := range hooks {
-					if hook.id == id {
-						out = hook.export(evt, &entryID)
-						return nil
-					}
-				}
+		for hook := range v.iterHooks() {
+			if hook.hook.id == id {
+				out = hook.hook.export(hook.evt, hook.entryID)
+				return nil
 			}
 		}
 		return ErrHookNotFound
