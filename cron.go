@@ -220,6 +220,9 @@ func (c *Cron) GetHooks() []Hook { return c.getHooks() }
 // GetHook returns a specific hook by ID or ErrHookNotFound if not found
 func (c *Cron) GetHook(id HookID) (Hook, error) { return c.getHook(id) }
 
+// SetHookLabel sets an hook's label
+func (c *Cron) SetHookLabel(id HookID, label string) { c.setHookLabel(id, label) }
+
 // OnJobStart registers a global hook function for job start events.
 // The hook will be called whenever any job starts.
 // Returns the HookID for later removal.
@@ -500,6 +503,14 @@ func (c *Cron) disableHook(id HookID) {
 	c.hooks.With(func(v *hooksContainer) {
 		if hook := getHookByID(*v, id); hook != nil {
 			(*hook.hook).active = false
+		}
+	})
+}
+
+func (c *Cron) setHookLabel(id HookID, label string) {
+	c.hooks.With(func(v *hooksContainer) {
+		if hook := getHookByID(*v, id); hook != nil {
+			(*hook.hook).label = label
 		}
 	})
 }

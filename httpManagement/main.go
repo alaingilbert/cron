@@ -243,6 +243,8 @@ func hookHandler(c *cron.Cron) http.Handler {
 				c.DisableHook(hookID)
 			} else if formName == "enableHook" {
 				c.EnableHook(hookID)
+			} else if formName == "updateLabel" {
+				c.SetHookLabel(hookID, r.PostFormValue("label"))
 			} else if formName == "removeHook" {
 				c.RemoveHook(hookID)
 				return redirectTo(w, "/")
