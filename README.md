@@ -182,6 +182,7 @@ func main() {
 	})
 
 	// Hooking
+	// By default hooks are running asynchronously.
 	// It is possible to add hooks for global job events
 	c.OnJobStart(func(ctx context.Context, c *cron.Cron, id cron.HookID, run cron.JobRun) {
 		fmt.Println("job started", run.Entry.ID, run.RunID)
