@@ -266,7 +266,7 @@ func startCleanupThread(c *Cron) {
 			start := c.clock.Now()
 			thresholdTime := start.Add(-keepCompletedRunsDur)
 			workerCount := runtime.NumCPU()
-			utils.ParallelForEach(c.runningJobsMap.IterValues(), workerCount, func(v *mtx.RWMtx[jobRunsInner]) {
+			utils.ParallelForEach(c.ctx, c.runningJobsMap.IterValues(), workerCount, func(v *mtx.RWMtx[jobRunsInner]) {
 				v.With(func(inner *jobRunsInner) {
 					idx := sort.Search(len(inner.completedTS), func(i int) bool {
 						return inner.completedTS[i].After(thresholdTime)

@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	cryptoRand "crypto/rand"
 	"encoding/hex"
 	"github.com/alaingilbert/cron/internal/core"
@@ -241,7 +242,7 @@ func NewAtomicPtr[T any](v *T) atomic.Pointer[T] {
 }
 
 // ParallelForEach ...
-func ParallelForEach[T any](s iter.Seq[T], workerCount int, fn func(T)) {
+func ParallelForEach[T any](ctx context.Context, s iter.Seq[T], workerCount int, fn func(T)) {
 	if workerCount <= 0 {
 		workerCount = runtime.NumCPU()
 	}
@@ -252,14 +253,28 @@ func ParallelForEach[T any](s iter.Seq[T], workerCount int, fn func(T)) {
 	for i := 0; i < workerCount; i++ {
 		go func() {
 			defer wg.Done()
-			for item := range ch {
-				fn(item)
+			for {
+				select {
+				case item, ok := <-ch:
+					if ok {
+						fn(item)
+					} else {
+						return
+					}
+				case <-ctx.Done():
+					return
+				}
 			}
 		}()
 	}
 	// Feed items to workers
+loop:
 	for item := range s {
-		ch <- item
+		select {
+		case ch <- item:
+		case <-ctx.Done():
+			break loop
+		}
 	}
 	close(ch)
 	wg.Wait()
