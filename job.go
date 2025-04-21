@@ -52,6 +52,20 @@ type Job22 interface{ Run(*Cron, Entry) error }
 type Job23 interface {
 	Run(context.Context, *Cron, Entry)
 }
+type Job24 interface{ Run(JobRun) }
+type Job25 interface{ Run(JobRun) error }
+type Job26 interface{ Run(context.Context, JobRun) }
+type Job27 interface {
+	Run(context.Context, JobRun) error
+}
+type Job28 interface{ Run(*Cron, JobRun) }
+type Job29 interface{ Run(*Cron, JobRun) error }
+type Job30 interface {
+	Run(context.Context, *Cron, JobRun)
+}
+type Job31 interface {
+	Run(context.Context, *Cron, JobRun) error
+}
 
 // FuncJob is a wrapper that turns a func() into a cron.Job
 type FuncJob func(context.Context, *Cron, JobRun) error
@@ -206,6 +220,58 @@ func (j *Job23Wrapper) Run(ctx context.Context, c *Cron, r JobRun) error {
 	return nil
 }
 
+type Job24Wrapper struct{ Job24 }
+
+func (j *Job24Wrapper) Run(_ context.Context, _ *Cron, r JobRun) error {
+	j.Job24.Run(r)
+	return nil
+}
+
+type Job25Wrapper struct{ Job25 }
+
+func (j *Job25Wrapper) Run(_ context.Context, _ *Cron, r JobRun) error {
+	return j.Job25.Run(r)
+}
+
+type Job26Wrapper struct{ Job26 }
+
+func (j *Job26Wrapper) Run(ctx context.Context, _ *Cron, r JobRun) error {
+	j.Job26.Run(ctx, r)
+	return nil
+}
+
+type Job27Wrapper struct{ Job27 }
+
+func (j *Job27Wrapper) Run(ctx context.Context, _ *Cron, r JobRun) error {
+	return j.Job27.Run(ctx, r)
+}
+
+type Job28Wrapper struct{ Job28 }
+
+func (j *Job28Wrapper) Run(_ context.Context, c *Cron, r JobRun) error {
+	j.Job28.Run(c, r)
+	return nil
+}
+
+type Job29Wrapper struct{ Job29 }
+
+func (j *Job29Wrapper) Run(_ context.Context, c *Cron, r JobRun) error {
+	return j.Job29.Run(c, r)
+}
+
+type Job30Wrapper struct{ Job30 }
+
+func (j *Job30Wrapper) Run(ctx context.Context, c *Cron, r JobRun) error {
+	j.Job30.Run(ctx, c, r)
+	return nil
+}
+
+type Job31Wrapper struct{ Job31 }
+
+func (j *Job31Wrapper) Run(ctx context.Context, c *Cron, r JobRun) error {
+	return j.Job31.Run(ctx, c, r)
+}
+
 type IntoJob any
 
 // J is a helper to turn a IntoJob into a Job
@@ -221,20 +287,28 @@ type IntoJob any
 // func(cron.Entry) error
 // func(*cron.Cron)
 // func(*cron.Cron) error
+// func(cron.JobRun)
+// func(cron.JobRun) error
 // func(context.Context, cron.EntryID)
 // func(context.Context, cron.EntryID) error
 // func(context.Context, cron.Entry)
 // func(context.Context, cron.Entry) error
 // func(context.Context, *cron.Cron)
 // func(context.Context, *cron.Cron) error
+// func(context.Context, cron.JobRun)
+// func(context.Context, cron.JobRun) error
 // func(*cron.Cron, cron.EntryID)
 // func(*cron.Cron, cron.EntryID) error
 // func(*cron.Cron, cron.Entry)
 // func(*cron.Cron, cron.Entry) error
+// func(*cron.Cron, cron.JobRun)
+// func(*cron.Cron, cron.JobRun) error
 // func(context.Context, *cron.Cron, cron.EntryID)
 // func(context.Context, *cron.Cron, cron.EntryID) error
 // func(context.Context, *cron.Cron, cron.Entry)
 // func(context.Context, *cron.Cron, cron.Entry) error
+// func(context.Context, *cron.Cron, cron.JobRun)
+// func(context.Context, *cron.Cron, cron.JobRun) error
 func J(v IntoJob) Job { return castIntoJob(v) }
 
 func castIntoJob(v IntoJob) Job {
@@ -345,6 +419,42 @@ func castIntoJob(v IntoJob) Job {
 		return FuncJob(func(ctx context.Context, c *Cron, r JobRun) error {
 			return j(ctx, c, r.Entry.ID)
 		})
+	case func(JobRun):
+		return FuncJob(func(_ context.Context, _ *Cron, r JobRun) error {
+			j(r)
+			return nil
+		})
+	case func(JobRun) error:
+		return FuncJob(func(_ context.Context, _ *Cron, r JobRun) error {
+			return j(r)
+		})
+	case func(context.Context, JobRun):
+		return FuncJob(func(ctx context.Context, _ *Cron, r JobRun) error {
+			j(ctx, r)
+			return nil
+		})
+	case func(context.Context, JobRun) error:
+		return FuncJob(func(ctx context.Context, _ *Cron, r JobRun) error {
+			return j(ctx, r)
+		})
+	case func(*Cron, JobRun):
+		return FuncJob(func(_ context.Context, c *Cron, r JobRun) error {
+			j(c, r)
+			return nil
+		})
+	case func(*Cron, JobRun) error:
+		return FuncJob(func(_ context.Context, c *Cron, r JobRun) error {
+			return j(c, r)
+		})
+	case func(context.Context, *Cron, JobRun):
+		return FuncJob(func(ctx context.Context, c *Cron, r JobRun) error {
+			j(ctx, c, r)
+			return nil
+		})
+	case func(context.Context, *Cron, JobRun) error:
+		return FuncJob(func(ctx context.Context, c *Cron, r JobRun) error {
+			return j(ctx, c, r)
+		})
 	case Job:
 		return j
 	case Job1:
@@ -393,6 +503,22 @@ func castIntoJob(v IntoJob) Job {
 		return &Job22Wrapper{j}
 	case Job23:
 		return &Job23Wrapper{j}
+	case Job24:
+		return &Job24Wrapper{j}
+	case Job25:
+		return &Job25Wrapper{j}
+	case Job26:
+		return &Job26Wrapper{j}
+	case Job27:
+		return &Job27Wrapper{j}
+	case Job28:
+		return &Job28Wrapper{j}
+	case Job29:
+		return &Job29Wrapper{j}
+	case Job30:
+		return &Job30Wrapper{j}
+	case Job31:
+		return &Job31Wrapper{j}
 	default:
 		panic(ErrUnsupportedJobType)
 	}
