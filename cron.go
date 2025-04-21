@@ -726,7 +726,7 @@ func (c *Cron) runWithRecovery(jobRun *jobRunStruct) {
 		logger.Info("job completed", "label", entry.Label, "entryID", entry.ID, "runID", jobRun.runID, "duration", clock.Since(start))
 		makeEvent(c, entry, jobRun, JobCompleted)
 	}()
-	logger.Info("job starting", "label", entry.Label, "entryID", entry.ID, "runID", jobRun.runID)
+	logger.Info("job start", "label", entry.Label, "entryID", entry.ID, "runID", jobRun.runID)
 	makeEvent(c, entry, jobRun, JobStart)
 	if err := entry.job.Run(jobRun.ctx, c, entry); err != nil {
 		logger.Error("job error", "label", entry.Label, "entryID", entry.ID, "runID", jobRun.runID, "error", err)
