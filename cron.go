@@ -41,6 +41,30 @@ type Cron struct {
 	jobRunCompletedCh    chan JobRun                                  // Channel for receiving notifications when job runs complete
 	keepCompletedRunsDur mtx.Mtx[time.Duration]                       // Duration to keep completed job runs before cleanup (thread-safe)
 	lastCleanupTS        mtx.Mtx[time.Time]                           // Timestamp of last completed job runs cleanup (thread-safe)
+	hooks                mtx.RWMtx[hooksContainer]                    //
+}
+
+type HookID string
+
+func HookFunc(fn HookFn) Hook {
+	return Hook{
+		id:       HookID(utils.UuidV4Str()),
+		runAsync: true,
+		fn:       fn,
+	}
+}
+
+type HookFn func(ctx context.Context, c *Cron, r JobRun)
+
+type Hook struct {
+	id       HookID
+	runAsync bool
+	fn       HookFn
+}
+
+type hooksContainer struct {
+	hooksMap      map[JobEventType][]Hook
+	entryHooksMap map[EntryID]map[JobEventType][]Hook
 }
 
 type jobRunsInner struct {
@@ -125,6 +149,10 @@ func New(opts ...Option) *Cron {
 		jobRunCreatedCh:      make(chan JobRun),
 		jobRunCompletedCh:    make(chan JobRun),
 		keepCompletedRunsDur: mtx.NewMtx(keepCompletedRunsDur),
+		hooks: mtx.NewRWMtx(hooksContainer{
+			hooksMap:      make(map[JobEventType][]Hook),
+			entryHooksMap: make(map[EntryID]map[JobEventType][]Hook),
+		}),
 		entries: mtx.NewRWMtx(entries{
 			heap:       newEntryHeap(),
 			entriesMap: make(map[EntryID]*Entry),
@@ -148,6 +176,46 @@ func (c *Cron) Stop() <-chan struct{} { return c.stop() }
 
 // Wait stops the cron and waits for all running jobs to complete before returning.
 func (c *Cron) Wait() { c.wait() }
+
+// OnEvt registers a global hook function for a specific job event type.
+// The hook will be called whenever the specified event occurs for any job.
+// Returns the HookID for later removal.
+func (c *Cron) OnEvt(evt JobEventType, clb HookFn) HookID { return c.onEvt(evt, clb) }
+
+// OnEntryEvt registers a hook function for a specific job event type on a specific entry.
+// The hook will be called only when the specified event occurs for the given entry.
+// Returns the HookID for later removal.
+func (c *Cron) OnEntryEvt(entryID EntryID, evt JobEventType, clb HookFn) HookID {
+	return c.onEntryEvt(entryID, evt, clb)
+}
+
+// RemoveHook removes a previously registered hook by its HookID.
+// Works for both global and entry-specific hooks.
+func (c *Cron) RemoveHook(id HookID) { c.removeHook(id) }
+
+// OnJobStart registers a global hook function for job start events.
+// The hook will be called whenever any job starts.
+// Returns the HookID for later removal.
+func (c *Cron) OnJobStart(clb HookFn) HookID { return c.onJobStart(clb) }
+
+// OnEntryJobStart registers a hook function for job start events on a specific entry.
+// The hook will be called only when the given entry's job starts.
+// Returns the HookID for later removal.
+func (c *Cron) OnEntryJobStart(entryID EntryID, clb HookFn) HookID {
+	return c.onEntryJobStart(entryID, clb)
+}
+
+// OnJobCompleted registers a global hook function for job completion events.
+// The hook will be called whenever any job completes.
+// Returns the HookID for later removal.
+func (c *Cron) OnJobCompleted(clb HookFn) HookID { return c.onJobCompleted(clb) }
+
+// OnEntryJobCompleted registers a hook function for job completion events on a specific entry.
+// The hook will be called only when the given entry's job completes.
+// Returns the HookID for later removal.
+func (c *Cron) OnEntryJobCompleted(entryID EntryID, clb HookFn) HookID {
+	return c.onEntryJobCompleted(entryID, clb)
+}
 
 // AddJob adds a Job to the Cron to be run on the given schedule.
 func (c *Cron) AddJob(spec string, job IntoJob, opts ...EntryOption) (EntryID, error) {
@@ -330,6 +398,66 @@ func (c *Cron) stopRunning() bool {
 }
 func (c *Cron) isRunning() bool {
 	return c.running.Load()
+}
+
+func (c *Cron) onEvt(evt JobEventType, clb HookFn) HookID {
+	hook := HookFunc(clb)
+	c.hooks.With(func(v *hooksContainer) {
+		v.hooksMap[evt] = append(v.hooksMap[evt], hook)
+	})
+	return hook.id
+}
+
+func (c *Cron) onEntryEvt(entryID EntryID, evt JobEventType, clb HookFn) HookID {
+	hook := HookFunc(clb)
+	c.hooks.With(func(v *hooksContainer) {
+		if v.entryHooksMap[entryID] == nil {
+			v.entryHooksMap[entryID] = make(map[JobEventType][]Hook)
+		}
+		v.entryHooksMap[entryID][evt] = append(v.entryHooksMap[entryID][evt], hook)
+	})
+	return hook.id
+}
+
+func (c *Cron) removeHook(id HookID) {
+	c.hooks.With(func(v *hooksContainer) {
+		for evt, hooks := range v.hooksMap {
+			if _, idx := utils.FindIdx(hooks, func(h Hook) bool { return h.id == id }); idx != -1 {
+				v.hooksMap[evt] = slices.Delete(v.hooksMap[evt], idx, idx+1)
+				return
+			}
+		}
+		for entryID, eventMap := range v.entryHooksMap {
+			for evt, hooks := range eventMap {
+				if _, idx := utils.FindIdx(hooks, func(h Hook) bool { return h.id == id }); idx != -1 {
+					eventMap[evt] = slices.Delete(eventMap[evt], idx, idx+1)
+					if len(eventMap[evt]) == 0 {
+						delete(eventMap, evt)
+					}
+					if len(eventMap) == 0 {
+						delete(v.entryHooksMap, entryID)
+					}
+					return
+				}
+			}
+		}
+	})
+}
+
+func (c *Cron) onJobStart(clb HookFn) HookID {
+	return c.onEvt(JobStart, clb)
+}
+
+func (c *Cron) onEntryJobStart(entryID EntryID, clb HookFn) HookID {
+	return c.onEntryEvt(entryID, JobStart, clb)
+}
+
+func (c *Cron) onJobCompleted(clb HookFn) HookID {
+	return c.onEvt(JobCompleted, clb)
+}
+
+func (c *Cron) onEntryJobCompleted(entryID EntryID, clb HookFn) HookID {
+	return c.onEntryEvt(entryID, JobCompleted, clb)
 }
 
 func (c *Cron) runNow(id EntryID) error {
@@ -716,21 +844,22 @@ func (c *Cron) startJob(entry Entry) {
 
 func (c *Cron) runWithRecovery(jobRun *jobRunStruct) {
 	entry := jobRun.entry
+	runID := jobRun.runID
 	clock := c.clock
 	logger := c.logger
 	start := clock.Now()
 	defer func() {
 		if r := recover(); r != nil {
-			logger.Error("job panic", "label", entry.Label, "entryID", entry.ID, "runID", jobRun.runID, "error", r, "stack", string(debug.Stack()))
+			logger.Error("job panic", "label", entry.Label, "entryID", entry.ID, "runID", runID, "error", r, "stack", string(debug.Stack()))
 			makeEvent(c, entry, jobRun, JobPanic)
 		}
-		logger.Info("job completed", "label", entry.Label, "entryID", entry.ID, "runID", jobRun.runID, "duration", clock.Since(start))
+		logger.Info("job completed", "label", entry.Label, "entryID", entry.ID, "runID", runID, "duration", clock.Since(start))
 		makeEvent(c, entry, jobRun, JobCompleted)
 	}()
-	logger.Info("job start", "label", entry.Label, "entryID", entry.ID, "runID", jobRun.runID)
+	logger.Info("job start", "label", entry.Label, "entryID", entry.ID, "runID", runID)
 	makeEvent(c, entry, jobRun, JobStart)
 	if err := entry.job.Run(jobRun.ctx, c, jobRun.export()); err != nil {
-		logger.Error("job error", "label", entry.Label, "entryID", entry.ID, "runID", jobRun.runID, "error", err)
+		logger.Error("job error", "label", entry.Label, "entryID", entry.ID, "runID", runID, "error", err)
 		makeEventErr(c, entry, jobRun, JobErr, err)
 	}
 }
@@ -759,6 +888,31 @@ func makeEventErr(c *Cron, entry Entry, jobRun *jobRunStruct, typ JobEventType, 
 		inner.addEvent(evt)
 	})
 	c.ps.Pub(entry.ID, evt)
+	triggerHooks(c, jobRun, typ)
+}
+
+func triggerHooks(c *Cron, jobRun *jobRunStruct, typ JobEventType) {
+	c.hooks.RWith(func(v hooksContainer) {
+		ctx := jobRun.ctx
+		jr := jobRun.export()
+		entryID := jr.Entry.ID
+		for _, hook := range v.hooksMap[typ] {
+			fn := func() { hook.fn(ctx, c, jr) }
+			if hook.runAsync {
+				go fn()
+			} else {
+				fn()
+			}
+		}
+		for _, hook := range v.entryHooksMap[entryID][typ] {
+			fn := func() { hook.fn(ctx, c, jr) }
+			if hook.runAsync {
+				go fn()
+			} else {
+				fn()
+			}
+		}
+	})
 }
 
 func (c *Cron) signalJobCompleted() {
