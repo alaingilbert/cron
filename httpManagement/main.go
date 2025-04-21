@@ -22,6 +22,7 @@ func GetMux(c *cron.Cron) *http.ServeMux {
 	mux.Handle("POST /entries/{entryID}/{$}", entryHandler(c))
 	mux.Handle("GET  /entries/{entryID}/runs/{runID}/{$}", runHandler(c))
 	mux.Handle("POST /entries/{entryID}/runs/{runID}/{$}", runHandler(c))
+	mux.Handle("GET  /hooks/{hookID}/{$}", hookHandler(c))
 	return mux
 }
 
@@ -92,6 +93,7 @@ type indexData struct {
 	Menu    template.HTML
 	JobRuns []cron.JobRun
 	Entries []cron.Entry
+	Hooks   []cron.Hook
 }
 
 type entryData struct {
@@ -107,6 +109,12 @@ type runData struct {
 	Menu   template.HTML
 	JobRun cron.JobRun
 	Entry  cron.Entry
+}
+
+type hookData struct {
+	Css  template.CSS
+	Menu template.HTML
+	Hook cron.Hook
 }
 
 func indexHandler(c *cron.Cron) http.Handler {
@@ -129,14 +137,25 @@ func indexHandler(c *cron.Cron) http.Handler {
 			} else if formName == "runNow" {
 				entryID := cron.EntryID(r.PostFormValue("entryID"))
 				_ = c.RunNow(entryID)
+			} else if formName == "removeHook" {
+				hookID := cron.HookID(r.PostFormValue("hookID"))
+				c.RemoveHook(hookID)
+			} else if formName == "enableHook" {
+				hookID := cron.HookID(r.PostFormValue("hookID"))
+				c.EnableHook(hookID)
+			} else if formName == "disableHook" {
+				hookID := cron.HookID(r.PostFormValue("hookID"))
+				c.DisableHook(hookID)
 			}
 			return redirectTo(w, "/")
 		}
 		jobRuns := c.RunningJobs()
 		entries := c.Entries()
+		hooks := c.GetHooks()
 		data := indexData{
 			JobRuns: jobRuns,
 			Entries: entries,
+			Hooks:   hooks,
 			Css:     template.CSS(getCss()),
 			Menu:    template.HTML(getMenu(c)),
 		}
@@ -207,5 +226,27 @@ func runHandler(c *cron.Cron) http.Handler {
 			Menu:   template.HTML(getMenu(c)),
 		}
 		return render(http.StatusOK, "templates/run.gohtml", data, w)
+	})
+}
+
+func hookHandler(c *cron.Cron) http.Handler {
+	return M(func(w http.ResponseWriter, r *http.Request) error {
+		hookID := cron.HookID(r.PathValue("hookID"))
+		hook, err := c.GetHook(hookID)
+		if err != nil {
+			return redirectTo(w, "/")
+		}
+		if r.Method == http.MethodPost {
+			formName := r.PostFormValue("formName")
+			if formName == "disableHook" {
+			}
+			return redirectTo(w, "/hooks/"+string(hookID))
+		}
+		data := hookData{
+			Hook: hook,
+			Css:  template.CSS(getCss()),
+			Menu: template.HTML(getMenu(c)),
+		}
+		return render(http.StatusOK, "templates/hook.gohtml", data, w)
 	})
 }

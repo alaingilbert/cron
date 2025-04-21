@@ -102,5 +102,58 @@ Entries ({{ len .Entries }})<br />
     {{ end }}
     </tbody>
 </table>
+
+
+<hr />
+
+Hooks ({{ len .Hooks }})<br />
+
+<table>
+    <thead>
+    <tr>
+        <th>Hook ID</th>
+        <th>Entry ID</th>
+        <th>Event</th>
+        <th>Label</th>
+        <th>Active</th>
+        <th>Actions</th>
+    </tr>
+    </thead>
+    <tbody>
+    {{ range .Hooks }}
+        <tr>
+            <td><span class="monospace"><a href="/hooks/{{ .ID }}">{{ .ID }}</a></span></td>
+            <td>{{ if .EntryID }}<span class="monospace"><a href="/entries/{{ .EntryID }}">{{ .EntryID }}</a></span>{{ else }}-{{ end }}</td>
+            <td>{{ .EventType }}</td>
+            <td>{{ if .Label }}{{ .Label }}{{ else }}-{{ end }}</td>
+            <td class="text-center">
+                {{ if .Active }}<span class="success">T</span>{{ else }}<span class="danger">F</span>{{ end }}
+            </td>
+            <td>
+                {{ if .Active }}
+                    <form method="POST" class="d-inline-block">
+                        <input type="hidden" name="formName" value="disableHook" />
+                        <input type="hidden" name="hookID" value="{{ .ID }}" />
+                        <input type="submit" value="Disable" />
+                    </form>
+                {{ else }}
+                    <form method="POST" class="d-inline-block">
+                        <input type="hidden" name="formName" value="enableHook" />
+                        <input type="hidden" name="hookID" value="{{ .ID }}" />
+                        <input type="submit" value="Enable" />
+                    </form>
+                {{ end }}
+                <form method="POST" class="d-inline-block">
+                    <input type="hidden" name="formName" value="removeHook" />
+                    <input type="hidden" name="hookID" value="{{ .ID }}" />
+                    <input type="submit" value="Remove" />
+                </form>
+            </td>
+        </tr>
+    {{ else }}
+        <tr><td colspan="6"><em>No hooks</em></td></tr>
+    {{ end }}
+    </tbody>
+</table>
 </body>
 </html>

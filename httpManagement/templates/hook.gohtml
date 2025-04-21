@@ -1,0 +1,15 @@
+<!doctype html>
+<html>
+<head>
+    <style>{{ .Css }}</style>
+</head>
+<body>
+{{ .Menu }}
+<table class="mb-1">
+    <tr><td>Hook ID:</td><td><span class="monospace">{{ .Hook.ID }}</span></td></tr>
+    <tr><td>Entry ID:</td><td>{{ if .Hook.EntryID }}<span class="monospace"><a href="/entries/{{ .Hook.EntryID }}">{{ .Hook.EntryID }}</a></span>{{ else }}-{{ end }}</td></tr>
+    <tr><td>Event:</td><td>{{ .Hook.EventType }}</td></tr>
+    <tr><td>Label:</td><td>{{ if .Hook.Label }}{{ .Hook.Label }}{{ else }}-{{ end }}</td></tr>
+</table>
+</body>
+</html>

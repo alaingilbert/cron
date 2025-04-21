@@ -61,6 +61,9 @@ type entries struct {
 	entriesMap map[EntryID]*Entry
 }
 
+// ErrHookNotFound ...
+var ErrHookNotFound = errors.New("hook not found")
+
 // ErrEntryNotFound ...
 var ErrEntryNotFound = errors.New("entry not found")
 
@@ -176,6 +179,18 @@ func (c *Cron) OnEntryEvt(entryID EntryID, evt JobEventType, clb HookFn, opts ..
 // RemoveHook removes a previously registered hook by its HookID.
 // Works for both global and entry-specific hooks.
 func (c *Cron) RemoveHook(id HookID) { c.removeHook(id) }
+
+// EnableHook ...
+func (c *Cron) EnableHook(id HookID) { c.enableHook(id) }
+
+// DisableHook ...
+func (c *Cron) DisableHook(id HookID) { c.disableHook(id) }
+
+// GetHooks returns all registered hooks (both global and entry-specific)
+func (c *Cron) GetHooks() []Hook { return c.getHooks() }
+
+// GetHook returns a specific hook by ID or ErrHookNotFound if not found
+func (c *Cron) GetHook(id HookID) (Hook, error) { return c.getHook(id) }
 
 // OnJobStart registers a global hook function for job start events.
 // The hook will be called whenever any job starts.
@@ -429,6 +444,44 @@ func (c *Cron) removeHook(id HookID) {
 					if len(eventMap) == 0 {
 						delete(v.entryHooksMap, entryID)
 					}
+					return
+				}
+			}
+		}
+	})
+}
+
+func (c *Cron) enableHook(id HookID) {
+	c.hooks.With(func(v *hooksContainer) {
+		for _, hooks := range v.hooksMap {
+			if _, idx := utils.FindIdx(hooks, func(h hookStruct) bool { return h.id == id }); idx != -1 {
+				hooks[idx].active = true
+				return
+			}
+		}
+		for _, eventMap := range v.entryHooksMap {
+			for evt, hooks := range eventMap {
+				if _, idx := utils.FindIdx(hooks, func(h hookStruct) bool { return h.id == id }); idx != -1 {
+					eventMap[evt][idx].active = true
+					return
+				}
+			}
+		}
+	})
+}
+
+func (c *Cron) disableHook(id HookID) {
+	c.hooks.With(func(v *hooksContainer) {
+		for _, hooks := range v.hooksMap {
+			if _, idx := utils.FindIdx(hooks, func(h hookStruct) bool { return h.id == id }); idx != -1 {
+				hooks[idx].active = false
+				return
+			}
+		}
+		for _, eventMap := range v.entryHooksMap {
+			for evt, hooks := range eventMap {
+				if _, idx := utils.FindIdx(hooks, func(h hookStruct) bool { return h.id == id }); idx != -1 {
+					eventMap[evt][idx].active = false
 					return
 				}
 			}
@@ -789,6 +842,52 @@ func sortJobRunsPublic(runs []JobRun) {
 	})
 }
 
+func (c *Cron) getHooks() (out []Hook) {
+	c.hooks.RWith(func(v hooksContainer) {
+		for evt, hooks := range v.hooksMap {
+			for _, hook := range hooks {
+				out = append(out, hook.export(evt, nil))
+			}
+		}
+		for entryID, hookEvt := range v.entryHooksMap {
+			for evt, hooks := range hookEvt {
+				for _, hook := range hooks {
+					out = append(out, hook.export(evt, &entryID))
+				}
+			}
+		}
+	})
+	return
+}
+
+func (c *Cron) getHook(id HookID) (Hook, error) {
+	var out Hook
+	if err := c.hooks.RWithE(func(v hooksContainer) error {
+		for evt, hooks := range v.hooksMap {
+			for _, hook := range hooks {
+				if hook.id == id {
+					out = hook.export(evt, nil)
+					return nil
+				}
+			}
+		}
+		for entryID, hookEvt := range v.entryHooksMap {
+			for evt, hooks := range hookEvt {
+				for _, hook := range hooks {
+					if hook.id == id {
+						out = hook.export(evt, &entryID)
+						return nil
+					}
+				}
+			}
+		}
+		return ErrHookNotFound
+	}); err != nil {
+		return Hook{}, err
+	}
+	return out, nil
+}
+
 func (c *Cron) entryExists(id EntryID) bool {
 	return utils.Second(c.getEntry(id)) == nil
 }
@@ -887,11 +986,13 @@ func triggerHooks(c *Cron, ctx context.Context, jr JobRun, evtType JobEventType)
 	c.hooks.RWith(func(v hooksContainer) {
 		entryID := jr.Entry.ID
 		runHook := func(hook hookStruct) {
-			fn := func() { hook.fn(ctx, c, hook.id, jr) }
-			if hook.runAsync {
-				go fn()
-			} else {
-				fn()
+			if hook.active {
+				fn := func() { hook.fn(ctx, c, hook.id, jr) }
+				if hook.runAsync {
+					go fn()
+				} else {
+					fn()
+				}
 			}
 		}
 		for _, hook := range v.hooksMap[evtType] {
