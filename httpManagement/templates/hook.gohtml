@@ -10,6 +10,7 @@
     <tr><td>Entry ID:</td><td>{{ if .Hook.EntryID }}<span class="monospace"><a href="/entries/{{ .Hook.EntryID }}">{{ .Hook.EntryID }}</a></span>{{ else }}-{{ end }}</td></tr>
     <tr><td>Event:</td><td>{{ .Hook.EventType }}</td></tr>
     <tr><td>Label:</td><td>{{ if .Hook.Label }}{{ .Hook.Label }}{{ else }}-{{ end }}</td></tr>
+    <tr><td>Active:</td><td>{{ if .Hook.Active }}<span class="success">T</span>{{ else }}<span class="danger">F</span>{{ end }}</td></tr>
 </table>
 </body>
 </html>
