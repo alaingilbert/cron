@@ -8,22 +8,22 @@ import (
 type JobEventType int
 
 const (
-	Start JobEventType = iota + 1
-	Completed
-	CompletedErr
-	CompletedPanic
+	JobStart JobEventType = iota + 1
+	JobCompleted
+	JobErr
+	JobPanic
 )
 
 func (e JobEventType) String() string {
 	switch e {
-	case Start:
-		return "Start"
-	case Completed:
-		return "Completed"
-	case CompletedErr:
-		return "CompletedErr"
-	case CompletedPanic:
-		return "CompletedPanic"
+	case JobStart:
+		return "JobStart"
+	case JobCompleted:
+		return "JobCompleted"
+	case JobErr:
+		return "JobErr"
+	case JobPanic:
+		return "JobPanic"
 	default:
 		return "Unknown"
 	}

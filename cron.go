@@ -721,16 +721,16 @@ func (c *Cron) runWithRecovery(jobRun *jobRunStruct) {
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Error("job panic", "label", entry.Label, "entryID", entry.ID, "runID", jobRun.runID, "error", r, "stack", string(debug.Stack()))
-			makeEvent(c, entry, jobRun, CompletedPanic)
+			makeEvent(c, entry, jobRun, JobPanic)
 		}
 		logger.Info("job completed", "label", entry.Label, "entryID", entry.ID, "runID", jobRun.runID, "duration", clock.Since(start))
-		makeEvent(c, entry, jobRun, Completed)
+		makeEvent(c, entry, jobRun, JobCompleted)
 	}()
 	logger.Info("job starting", "label", entry.Label, "entryID", entry.ID, "runID", jobRun.runID)
-	makeEvent(c, entry, jobRun, Start)
+	makeEvent(c, entry, jobRun, JobStart)
 	if err := entry.job.Run(jobRun.ctx, c, entry); err != nil {
 		logger.Error("job error", "label", entry.Label, "entryID", entry.ID, "runID", jobRun.runID, "error", err)
-		makeEventErr(c, entry, jobRun, CompletedErr, err)
+		makeEventErr(c, entry, jobRun, JobErr, err)
 	}
 }
 
@@ -743,13 +743,13 @@ func makeEventErr(c *Cron, entry Entry, jobRun *jobRunStruct, typ JobEventType, 
 	now := clock.Now()
 	var opt func(*jobRunInner)
 	switch typ {
-	case Start:
+	case JobStart:
 		opt = func(inner *jobRunInner) { (*inner).startedAt = utils.Ptr(now) }
-	case Completed:
+	case JobCompleted:
 		opt = func(inner *jobRunInner) { (*inner).completedAt = utils.Ptr(now) }
-	case CompletedPanic:
+	case JobPanic:
 		opt = func(inner *jobRunInner) { (*inner).panic = true }
-	case CompletedErr:
+	case JobErr:
 		opt = func(inner *jobRunInner) { (*inner).error = err }
 	}
 	evt := newJobEvent(typ, clock)

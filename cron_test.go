@@ -1122,32 +1122,32 @@ func TestWithDeadline(t *testing.T) {
 }
 
 func TestEventsString(t *testing.T) {
-	assert.Equal(t, "Start", Start.String())
-	assert.Equal(t, "Completed", Completed.String())
-	assert.Equal(t, "CompletedErr", CompletedErr.String())
-	assert.Equal(t, "CompletedPanic", CompletedPanic.String())
+	assert.Equal(t, "JobStart", JobStart.String())
+	assert.Equal(t, "JobCompleted", JobCompleted.String())
+	assert.Equal(t, "JobErr", JobErr.String())
+	assert.Equal(t, "JobPanic", JobPanic.String())
 	assert.Equal(t, "Unknown", JobEventType(-3).String())
 }
 
 type EventListener struct {
-	nbStart          atomic.Int32
-	nbCompleted      atomic.Int32
-	nbCompletedErr   atomic.Int32
-	nbCompletedPanic atomic.Int32
-	startCh          chan struct{}
-	completedCh      chan struct{}
-	completedErrCh   chan struct{}
-	completedPanicCh chan struct{}
-	cond             sync.Cond
+	nbJobStart     atomic.Int32
+	nbJobCompleted atomic.Int32
+	nbJobErr       atomic.Int32
+	nbJobPanic     atomic.Int32
+	jobStartCh     chan struct{}
+	jobCompletedCh chan struct{}
+	jobErrCh       chan struct{}
+	jobPanicCh     chan struct{}
+	cond           sync.Cond
 }
 
 func NewEventListener(c *Cron, id EntryID) *EventListener {
 	l := &EventListener{
-		startCh:          make(chan struct{}, 100),
-		completedCh:      make(chan struct{}, 100),
-		completedErrCh:   make(chan struct{}, 100),
-		completedPanicCh: make(chan struct{}, 100),
-		cond:             *sync.NewCond(&sync.Mutex{}),
+		jobStartCh:     make(chan struct{}, 100),
+		jobCompletedCh: make(chan struct{}, 100),
+		jobErrCh:       make(chan struct{}, 100),
+		jobPanicCh:     make(chan struct{}, 100),
+		cond:           *sync.NewCond(&sync.Mutex{}),
 	}
 	c1 := make(chan struct{})
 	go func() {
@@ -1160,18 +1160,18 @@ func NewEventListener(c *Cron, id EntryID) *EventListener {
 				return
 			case payload = <-sub.ReceiveCh():
 			}
-			if payload.Msg.Typ == Start {
-				l.nbStart.Add(1)
-				utils.NonBlockingSend(l.startCh, struct{}{})
-			} else if payload.Msg.Typ == Completed {
-				l.nbCompleted.Add(1)
-				utils.NonBlockingSend(l.completedCh, struct{}{})
-			} else if payload.Msg.Typ == CompletedErr {
-				l.nbCompletedErr.Add(1)
-				utils.NonBlockingSend(l.completedErrCh, struct{}{})
-			} else if payload.Msg.Typ == CompletedPanic {
-				l.nbCompletedPanic.Add(1)
-				utils.NonBlockingSend(l.completedPanicCh, struct{}{})
+			if payload.Msg.Typ == JobStart {
+				l.nbJobStart.Add(1)
+				utils.NonBlockingSend(l.jobStartCh, struct{}{})
+			} else if payload.Msg.Typ == JobCompleted {
+				l.nbJobCompleted.Add(1)
+				utils.NonBlockingSend(l.jobCompletedCh, struct{}{})
+			} else if payload.Msg.Typ == JobErr {
+				l.nbJobErr.Add(1)
+				utils.NonBlockingSend(l.jobErrCh, struct{}{})
+			} else if payload.Msg.Typ == JobPanic {
+				l.nbJobPanic.Add(1)
+				utils.NonBlockingSend(l.jobPanicCh, struct{}{})
 			}
 			l.cond.L.Lock()
 			l.cond.Signal()
@@ -1185,14 +1185,14 @@ func NewEventListener(c *Cron, id EntryID) *EventListener {
 	return l
 }
 
-func (l *EventListener) NbStart() int32                    { return l.nbStart.Load() }
-func (l *EventListener) NbCompleted() int32                { return l.nbCompleted.Load() }
-func (l *EventListener) NbCompletedErr() int32             { return l.nbCompletedErr.Load() }
-func (l *EventListener) NbCompletedPanic() int32           { return l.nbCompletedPanic.Load() }
-func (l *EventListener) StartCh() <-chan struct{}          { return l.startCh }
-func (l *EventListener) CompletedCh() <-chan struct{}      { return l.completedCh }
-func (l *EventListener) CompletedErrCh() <-chan struct{}   { return l.completedErrCh }
-func (l *EventListener) CompletedPanicCh() <-chan struct{} { return l.completedPanicCh }
+func (l *EventListener) NbJobStart() int32               { return l.nbJobStart.Load() }
+func (l *EventListener) NbJobCompleted() int32           { return l.nbJobCompleted.Load() }
+func (l *EventListener) NbJobErr() int32                 { return l.nbJobErr.Load() }
+func (l *EventListener) NbJobPanic() int32               { return l.nbJobPanic.Load() }
+func (l *EventListener) JobStartCh() <-chan struct{}     { return l.jobStartCh }
+func (l *EventListener) JobCompletedCh() <-chan struct{} { return l.jobCompletedCh }
+func (l *EventListener) JobErrCh() <-chan struct{}       { return l.jobErrCh }
+func (l *EventListener) JobPanicCh() <-chan struct{}     { return l.jobPanicCh }
 
 func (l *EventListener) Wait(clb func() bool) {
 	l.cond.L.Lock()
@@ -1216,13 +1216,13 @@ func TestEvents(t *testing.T) {
 	advanceAndCycleNoWait(cron, time.Second)    // after 1s, job starts
 	<-c1                                        // wait until the job is started before advancing clock
 	advanceAndCycleNoWait(cron, time.Minute)    // after 1m another job starts but is skipped
-	<-l.CompletedErrCh()                        // Wait until we receive the failed event before advancing clock
+	<-l.JobErrCh()                              // Wait until we receive the failed event before advancing clock
 	advanceAndCycleNoWait(cron, time.Minute)    // after 2m another job starts but is skipped
-	<-l.CompletedErrCh()                        // Wait until we receive the failed event before advancing clock
+	<-l.JobErrCh()                              // Wait until we receive the failed event before advancing clock
 	advanceAndCycleNoWait(cron, 30*time.Second) // after 2m30s job is completed
 
 	// Wait until we receive all events (1 completed, 2 failed)
-	l.Wait(func() bool { return l.NbCompletedErr() == 2 && l.NbCompleted() == 3 })
+	l.Wait(func() bool { return l.NbJobErr() == 2 && l.NbJobCompleted() == 3 })
 }
 
 func TestRunningJobs(t *testing.T) {
