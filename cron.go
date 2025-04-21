@@ -54,7 +54,7 @@ func HookFunc(fn HookFn) Hook {
 	}
 }
 
-type HookFn func(ctx context.Context, c *Cron, r JobRun)
+type HookFn func(context.Context, *Cron, HookID, JobRun)
 
 type Hook struct {
 	id       HookID
@@ -917,7 +917,7 @@ func triggerHooks(c *Cron, jobRun *jobRunStruct, typ JobEventType) {
 		jr := jobRun.export()
 		entryID := jr.Entry.ID
 		runHook := func(hook Hook) {
-			fn := func() { hook.fn(ctx, c, jr) }
+			fn := func() { hook.fn(ctx, c, hook.id, jr) }
 			if hook.runAsync {
 				go fn()
 			} else {
