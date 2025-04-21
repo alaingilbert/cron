@@ -253,6 +253,7 @@ func (c *Cron) GetCleanupTS() time.Time { return c.lastCleanupTS.Get() }
 
 func startCleanupThread(c *Cron) {
 	go func() {
+		defer c.logger.Info("cleanup thread stopped")
 		for {
 			keepCompletedRunsDur := c.keepCompletedRunsDur.Get()
 			select {
