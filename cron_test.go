@@ -214,6 +214,26 @@ func TestStopWait(t *testing.T) {
 	recvWithTimeout(t, c2, "expected cron will be stopped immediately")
 }
 
+func TestWait(t *testing.T) {
+	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 1, 0, 0, 0, time.UTC))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
+	c1 := make(chan struct{})
+	c2 := make(chan struct{})
+	_, _ = cron.AddJob("1 0 1 * * *", func() {
+		clock.SleepNotify(time.Minute, c1)
+	})
+	cron.Start()
+	advanceAndCycleNoWait(cron, time.Second)
+	go func() {
+		<-c1
+		cron.Wait() // wait until all ongoing jobs terminate
+		close(c2)
+	}()
+	<-c1
+	advanceAndCycle(cron, 61*time.Second)
+	recvWithTimeout(t, c2, "expected cron will be stopped immediately")
+}
+
 // Start, stop, then add an entry. Verify entry doesn't run.
 func TestStopCausesJobsToNotRun(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
