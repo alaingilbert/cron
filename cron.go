@@ -218,33 +218,33 @@ func (c *Cron) Schedule(schedule Schedule, job Job, opts ...EntryOption) (EntryI
 	return c.schedule(nil, schedule, job, opts...)
 }
 
-// AddEntry ...
+// AddEntry adds a pre-configured Entry to the Cron
 func (c *Cron) AddEntry(entry Entry, opts ...EntryOption) (EntryID, error) {
 	return c.addEntry(entry, opts...)
 }
 
-// UpdateSchedule ...
+// UpdateSchedule updates an entry's schedule with a new Schedule
 func (c *Cron) UpdateSchedule(id EntryID, schedule Schedule) error {
 	return c.updateSchedule(id, nil, schedule)
 }
 
-// UpdateScheduleWithSpec ...
+// UpdateScheduleWithSpec updates an entry's schedule by parsing a spec string
 func (c *Cron) UpdateScheduleWithSpec(id EntryID, spec string) error {
 	return c.updateScheduleWithSpec(id, spec)
 }
 
-// UpdateLabel ...
+// UpdateLabel updates an entry's label
 func (c *Cron) UpdateLabel(id EntryID, label string) { c.updateLabel(id, label) }
 
-// Sub subscribes to Job events
+// Sub subscribes to job events for a specific entry ID
 func (c *Cron) Sub(id EntryID) *pubsub.Sub[EntryID, JobEvent] {
 	return c.ps.Subscribe([]EntryID{id})
 }
 
-// JobRunCreatedCh ...
+// JobRunCreatedCh returns channel for job run creation notifications
 func (c *Cron) JobRunCreatedCh() <-chan JobRun { return c.jobRunCreatedCh }
 
-// JobRunCompletedCh ...
+// JobRunCompletedCh returns channel for job run completion notifications
 func (c *Cron) JobRunCompletedCh() <-chan JobRun { return c.jobRunCompletedCh }
 
 // Enable activates a previously disabled cron entry by its ID
@@ -305,7 +305,7 @@ func (c *Cron) SetLocation(newLoc *time.Location) { c.setLocation(newLoc) }
 // If no job is scheduled to be executed, the Zero time is returned
 func (c *Cron) GetNextTime() time.Time { return c.getNextTime() }
 
-// GetCleanupTS ...
+// GetCleanupTS returns the timestamp of the last completed job runs cleanup
 func (c *Cron) GetCleanupTS() time.Time { return c.lastCleanupTS.Get() }
 
 //-----------------------------------------------------------------------------
