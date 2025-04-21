@@ -1481,3 +1481,134 @@ func TestGetCleanupTS(t *testing.T) {
 	cron.Start()
 	assert.True(t, cron.GetCleanupTS().IsZero())
 }
+
+func TestOnEvt(t *testing.T) {
+	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newNoOpLogger()))
+	var calls atomic.Int32
+	hookID := cron.OnEvt(JobStart, func(ctx context.Context, c *Cron, id HookID, jr JobRun) {
+		calls.Add(1)
+	}, HookSync)
+	cron.Start()
+	_, _ = cron.AddJob("* * * * * *", func() {})
+	advanceAndCycle(cron, time.Second)
+	assert.Equal(t, int32(1), calls.Load())
+	cron.RemoveHook(hookID)
+	advanceAndCycle(cron, time.Second)
+	assert.Equal(t, int32(1), calls.Load())
+}
+
+func TestOnEntryEvt(t *testing.T) {
+	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newNoOpLogger()))
+	var calls atomic.Int32
+	id, _ := cron.AddJob("* * * * * *", func() {})
+	hookID := cron.OnEntryEvt(id, JobStart, func(ctx context.Context, c *Cron, id HookID, jr JobRun) {
+		calls.Add(1)
+	}, HookSync)
+	cron.Start()
+	advanceAndCycle(cron, time.Second)
+	assert.Equal(t, int32(1), calls.Load())
+	cron.RemoveHook(hookID)
+	advanceAndCycle(cron, time.Second)
+	assert.Equal(t, int32(1), calls.Load())
+}
+
+func TestRemoveHook(t *testing.T) {
+	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newNoOpLogger()))
+	var calls atomic.Int32
+	hookID := cron.OnJobStart(func(ctx context.Context, c *Cron, id HookID, jr JobRun) {
+		calls.Add(1)
+	}, HookSync)
+	cron.Start()
+	_, _ = cron.AddJob("* * * * * *", func() {})
+	advanceAndCycle(cron, time.Second)
+	assert.Equal(t, int32(1), calls.Load())
+	cron.RemoveHook(hookID)
+	advanceAndCycle(cron, time.Second)
+	assert.Equal(t, int32(1), calls.Load())
+}
+
+func TestOnJobStart(t *testing.T) {
+	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newNoOpLogger()))
+	var calls atomic.Int32
+	hookID := cron.OnJobStart(func(ctx context.Context, c *Cron, id HookID, jr JobRun) {
+		calls.Add(1)
+	}, HookSync)
+	cron.Start()
+	_, _ = cron.AddJob("* * * * * *", func() {})
+	advanceAndCycle(cron, time.Second)
+	assert.Equal(t, int32(1), calls.Load())
+	cron.RemoveHook(hookID)
+	advanceAndCycle(cron, time.Second)
+	assert.Equal(t, int32(1), calls.Load())
+}
+
+func TestOnEntryJobStart(t *testing.T) {
+	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newNoOpLogger()))
+	var calls atomic.Int32
+	id, _ := cron.AddJob("* * * * * *", func() {})
+	hookID := cron.OnEntryJobStart(id, func(ctx context.Context, c *Cron, id HookID, jr JobRun) {
+		calls.Add(1)
+	}, HookSync)
+	cron.Start()
+	advanceAndCycle(cron, time.Second)
+	assert.Equal(t, int32(1), calls.Load())
+	cron.RemoveHook(hookID)
+	advanceAndCycle(cron, time.Second)
+	assert.Equal(t, int32(1), calls.Load())
+}
+
+func TestOnJobCompleted(t *testing.T) {
+	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newNoOpLogger()))
+	var calls atomic.Int32
+	hookID := cron.OnJobCompleted(func(ctx context.Context, c *Cron, id HookID, jr JobRun) {
+		calls.Add(1)
+	}, HookSync)
+	cron.Start()
+	_, _ = cron.AddJob("* * * * * *", func() {})
+	advanceAndCycle(cron, time.Second)
+	assert.Equal(t, int32(1), calls.Load())
+	cron.RemoveHook(hookID)
+	advanceAndCycle(cron, time.Second)
+	assert.Equal(t, int32(1), calls.Load())
+}
+
+func TestOnEntryJobCompleted(t *testing.T) {
+	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newNoOpLogger()))
+	var calls atomic.Int32
+	id, _ := cron.AddJob("* * * * * *", func() {})
+	hookID := cron.OnEntryJobCompleted(id, func(ctx context.Context, c *Cron, id HookID, jr JobRun) {
+		calls.Add(1)
+	}, HookSync)
+	cron.Start()
+	advanceAndCycle(cron, time.Second)
+	assert.Equal(t, int32(1), calls.Load())
+	cron.RemoveHook(hookID)
+	advanceAndCycle(cron, time.Second)
+	assert.Equal(t, int32(1), calls.Load())
+}
+
+func TestOnEntryJobStartAsync(t *testing.T) {
+	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newNoOpLogger()))
+	var calls atomic.Int32
+	id, _ := cron.AddJob("* * * * * *", func() {})
+	c1 := make(chan struct{})
+	hookID := cron.OnEntryJobStart(id, func(ctx context.Context, c *Cron, id HookID, jr JobRun) {
+		calls.Add(1)
+		close(c1)
+	})
+	cron.Start()
+	advanceAndCycle(cron, time.Second)
+	<-c1
+	assert.Equal(t, int32(1), calls.Load())
+	cron.RemoveHook(hookID)
+	advanceAndCycle(cron, time.Second)
+	assert.Equal(t, int32(1), calls.Load())
+}
