@@ -272,6 +272,14 @@ func (j *Job31Wrapper) Run(ctx context.Context, c *Cron, r JobRun) error {
 	return j.Job31.Run(ctx, c, r)
 }
 
+type Job32 interface{ Run(context.Context, *Cron, Entry) error }
+
+type Job32Wrapper struct{ Job32 }
+
+func (j *Job32Wrapper) Run(ctx context.Context, c *Cron, r JobRun) error {
+	return j.Job32.Run(ctx, c, r.Entry)
+}
+
 type IntoJob any
 
 // J is a helper to turn a IntoJob into a Job
@@ -519,6 +527,8 @@ func castIntoJob(v IntoJob) Job {
 		return &Job30Wrapper{j}
 	case Job31:
 		return &Job31Wrapper{j}
+	case Job32:
+		return &Job32Wrapper{j}
 	default:
 		panic(ErrUnsupportedJobType)
 	}
