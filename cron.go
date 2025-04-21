@@ -46,8 +46,8 @@ type Cron struct {
 
 type HookID string
 
-func HookFunc(fn HookFn) Hook {
-	return Hook{
+func hookFunc(fn HookFn) hookStruct {
+	return hookStruct{
 		id:       HookID(utils.UuidV4Str()),
 		runAsync: true,
 		fn:       fn,
@@ -56,21 +56,21 @@ func HookFunc(fn HookFn) Hook {
 
 type HookFn func(context.Context, *Cron, HookID, JobRun)
 
-type Hook struct {
+type hookStruct struct {
 	id       HookID
 	runAsync bool
 	fn       HookFn
 }
 
-type HookOption func(*Hook)
+type HookOption func(*hookStruct)
 
-func HookSync(hook *Hook) {
+func HookSync(hook *hookStruct) {
 	hook.runAsync = false
 }
 
 type hooksContainer struct {
-	hooksMap      map[JobEventType][]Hook
-	entryHooksMap map[EntryID]map[JobEventType][]Hook
+	hooksMap      map[JobEventType][]hookStruct
+	entryHooksMap map[EntryID]map[JobEventType][]hookStruct
 }
 
 type jobRunsInner struct {
@@ -156,8 +156,8 @@ func New(opts ...Option) *Cron {
 		jobRunCompletedCh:    make(chan JobRun),
 		keepCompletedRunsDur: mtx.NewMtx(keepCompletedRunsDur),
 		hooks: mtx.NewRWMtx(hooksContainer{
-			hooksMap:      make(map[JobEventType][]Hook),
-			entryHooksMap: make(map[EntryID]map[JobEventType][]Hook),
+			hooksMap:      make(map[JobEventType][]hookStruct),
+			entryHooksMap: make(map[EntryID]map[JobEventType][]hookStruct),
 		}),
 		entries: mtx.NewRWMtx(entries{
 			heap:       newEntryHeap(),
@@ -415,7 +415,7 @@ func (c *Cron) isRunning() bool {
 }
 
 func (c *Cron) onEvt(evt JobEventType, clb HookFn, opts ...HookOption) HookID {
-	hook := HookFunc(clb)
+	hook := hookFunc(clb)
 	utils.ApplyOptions(&hook, opts...)
 	c.hooks.With(func(v *hooksContainer) {
 		v.hooksMap[evt] = append(v.hooksMap[evt], hook)
@@ -424,11 +424,11 @@ func (c *Cron) onEvt(evt JobEventType, clb HookFn, opts ...HookOption) HookID {
 }
 
 func (c *Cron) onEntryEvt(entryID EntryID, evt JobEventType, clb HookFn, opts ...HookOption) HookID {
-	hook := HookFunc(clb)
+	hook := hookFunc(clb)
 	utils.ApplyOptions(&hook, opts...)
 	c.hooks.With(func(v *hooksContainer) {
 		if v.entryHooksMap[entryID] == nil {
-			v.entryHooksMap[entryID] = make(map[JobEventType][]Hook)
+			v.entryHooksMap[entryID] = make(map[JobEventType][]hookStruct)
 		}
 		v.entryHooksMap[entryID][evt] = append(v.entryHooksMap[entryID][evt], hook)
 	})
@@ -438,14 +438,14 @@ func (c *Cron) onEntryEvt(entryID EntryID, evt JobEventType, clb HookFn, opts ..
 func (c *Cron) removeHook(id HookID) {
 	c.hooks.With(func(v *hooksContainer) {
 		for evt, hooks := range v.hooksMap {
-			if _, idx := utils.FindIdx(hooks, func(h Hook) bool { return h.id == id }); idx != -1 {
+			if _, idx := utils.FindIdx(hooks, func(h hookStruct) bool { return h.id == id }); idx != -1 {
 				v.hooksMap[evt] = slices.Delete(v.hooksMap[evt], idx, idx+1)
 				return
 			}
 		}
 		for entryID, eventMap := range v.entryHooksMap {
 			for evt, hooks := range eventMap {
-				if _, idx := utils.FindIdx(hooks, func(h Hook) bool { return h.id == id }); idx != -1 {
+				if _, idx := utils.FindIdx(hooks, func(h hookStruct) bool { return h.id == id }); idx != -1 {
 					eventMap[evt] = slices.Delete(eventMap[evt], idx, idx+1)
 					if len(eventMap[evt]) == 0 {
 						delete(eventMap, evt)
@@ -910,7 +910,7 @@ func makeEventErr(c *Cron, entry Entry, jobRun *jobRunStruct, typ JobEventType, 
 func triggerHooks(c *Cron, ctx context.Context, jr JobRun, evtType JobEventType) {
 	c.hooks.RWith(func(v hooksContainer) {
 		entryID := jr.Entry.ID
-		runHook := func(hook Hook) {
+		runHook := func(hook hookStruct) {
 			fn := func() { hook.fn(ctx, c, hook.id, jr) }
 			if hook.runAsync {
 				go fn()
