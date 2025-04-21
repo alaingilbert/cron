@@ -23,6 +23,7 @@ func GetMux(c *cron.Cron) *http.ServeMux {
 	mux.Handle("GET  /entries/{entryID}/runs/{runID}/{$}", runHandler(c))
 	mux.Handle("POST /entries/{entryID}/runs/{runID}/{$}", runHandler(c))
 	mux.Handle("GET  /hooks/{hookID}/{$}", hookHandler(c))
+	mux.Handle("POST /hooks/{hookID}/{$}", hookHandler(c))
 	return mux
 }
 
@@ -239,6 +240,12 @@ func hookHandler(c *cron.Cron) http.Handler {
 		if r.Method == http.MethodPost {
 			formName := r.PostFormValue("formName")
 			if formName == "disableHook" {
+				c.DisableHook(hookID)
+			} else if formName == "enableHook" {
+				c.EnableHook(hookID)
+			} else if formName == "removeHook" {
+				c.RemoveHook(hookID)
+				return redirectTo(w, "/")
 			}
 			return redirectTo(w, "/hooks/"+string(hookID))
 		}

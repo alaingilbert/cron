@@ -12,5 +12,22 @@
     <tr><td>Label:</td><td>{{ if .Hook.Label }}{{ .Hook.Label }}{{ else }}-{{ end }}</td></tr>
     <tr><td>Active:</td><td>{{ if .Hook.Active }}<span class="success">T</span>{{ else }}<span class="danger">F</span>{{ end }}</td></tr>
 </table>
+<div>
+    {{ if .Hook.Active }}
+        <form method="POST" class="d-inline-block">
+            <input type="hidden" name="formName" value="disableHook" />
+            <input type="submit" value="Disable" />
+        </form>
+    {{ else }}
+        <form method="POST" class="d-inline-block">
+            <input type="hidden" name="formName" value="enableHook" />
+            <input type="submit" value="Enable" />
+        </form>
+    {{ end }}
+    <form method="POST" class="d-inline-block">
+        <input type="hidden" name="formName" value="removeHook" />
+        <input type="submit" value="Remove" />
+    </form>
+</div>
 </body>
 </html>
