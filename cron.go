@@ -261,10 +261,10 @@ func (c *Cron) JobRunCreatedCh() <-chan JobRun { return c.jobRunCreatedCh }
 // JobRunCompletedCh ...
 func (c *Cron) JobRunCompletedCh() <-chan JobRun { return c.jobRunCompletedCh }
 
-// Enable ...
+// Enable activates a previously disabled cron entry by its ID
 func (c *Cron) Enable(id EntryID) { c.setEntryActive(id, true) }
 
-// Disable ...
+// Disable deactivates a previously enabled cron entry by its ID
 func (c *Cron) Disable(id EntryID) { c.setEntryActive(id, false) }
 
 // Entries returns a snapshot of the cron entries.
@@ -282,25 +282,29 @@ func (c *Cron) RunNow(id EntryID) error { return c.runNow(id) }
 // IsRunning either or not a specific job is currently running
 func (c *Cron) IsRunning(id EntryID) bool { return c.entryIsRunning(id) }
 
-// RunningJobs ...
+// RunningJobs returns a list of all currently running jobs across all entries
 func (c *Cron) RunningJobs() []JobRun { return c.runningJobs() }
 
-// RunningJobsFor ...
+// RunningJobsFor returns all currently running jobs for a specific entry
+// // Returns ErrEntryNotFound if the entry doesn't exist.
 func (c *Cron) RunningJobsFor(entryID EntryID) ([]JobRun, error) {
 	return c.runningJobsFor(entryID)
 }
 
-// CompletedJobRunsFor ...
+// CompletedJobRunsFor returns all completed job runs for a specific entry.
+// Returns ErrEntryNotFound if the entry doesn't exist.
 func (c *Cron) CompletedJobRunsFor(entryID EntryID) ([]JobRun, error) {
 	return c.completedJobRunsFor(entryID)
 }
 
-// GetJobRun ...
+// GetJobRun retrieves a specific job run by entry ID and run ID.
+// Returns ErrEntryNotFound if the entry doesn't exist or ErrJobRunNotFound if the run doesn't exist.
 func (c *Cron) GetJobRun(entryID EntryID, runID RunID) (JobRun, error) {
 	return c.getJobRun(entryID, runID)
 }
 
-// CancelJobRun ...
+// CancelJobRun attempts to cancel a running job by entry ID and run ID.
+// Returns ErrEntryNotFound if the entry doesn't exist or ErrJobRunNotFound if the run doesn't exist.
 func (c *Cron) CancelJobRun(entryID EntryID, runID RunID) error { return c.cancelRun(entryID, runID) }
 
 // Location gets the time zone location
