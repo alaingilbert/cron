@@ -700,7 +700,7 @@ func TestNextIDIsThreadSafe(t *testing.T) {
 	}
 	wg.Wait()
 	m := make(map[EntryID]bool)
-	for _, e := range cron.entries.Get().entriesHeap {
+	for _, e := range cron.entries.Get().heap.entries {
 		if _, ok := m[e.ID]; ok {
 			t.Fatal()
 		}

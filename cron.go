@@ -1,7 +1,6 @@
 package cron
 
 import (
-	"container/heap"
 	"context"
 	"errors"
 	"log/slog"
@@ -52,8 +51,8 @@ type jobRunsInner struct {
 }
 
 type entries struct {
-	entriesHeap EntryHeap
-	entriesMap  map[EntryID]*Entry
+	heap       *entryHeap
+	entriesMap map[EntryID]*Entry
 }
 
 // ErrEntryNotFound ...
@@ -127,8 +126,8 @@ func New(opts ...Option) *Cron {
 		jobRunCompletedCh:    make(chan JobRun),
 		keepCompletedRunsDur: mtx.NewMtx(keepCompletedRunsDur),
 		entries: mtx.NewRWMtx(entries{
-			entriesHeap: make(EntryHeap, 0),
-			entriesMap:  make(map[EntryID]*Entry),
+			heap:       newEntryHeap(),
+			entriesMap: make(map[EntryID]*Entry),
 		}),
 	}
 	if keepCompletedRunsDur > 0 {
@@ -333,18 +332,13 @@ func (c *Cron) isRunning() bool {
 	return c.running.Load()
 }
 
-func findByIDFn(id EntryID) func(e *Entry) bool {
-	return func(e *Entry) bool { return e.ID == id }
-}
-
 func (c *Cron) runNow(id EntryID) error {
 	if err := c.entries.WithE(func(entries *entries) error {
 		if entry, ok := (*entries).entriesMap[id]; ok {
-			if idx := slices.Index((*entries).entriesHeap, entry); idx != -1 {
-				(*entry).Next = c.now()
-				reInsertEntry(&entries.entriesHeap, idx) // runNow
-				return nil
-			}
+			newNext := c.now()
+			(*entry).Next = newNext
+			_ = entries.heap.Update(id, newNext)
+			return nil
 		}
 		return ErrEntryNotFound
 	}); err != nil {
@@ -395,7 +389,7 @@ func (c *Cron) addEntry(entry Entry, opts ...EntryOption) (EntryID, error) {
 	}
 	c.entries.With(func(entries *entries) {
 		entries.entriesMap[entry.ID] = &entry
-		heap.Push(&entries.entriesHeap, &entry)
+		entries.heap.Push(&entry)
 	})
 	c.entriesUpdated() // addEntry
 	return entry.ID, nil
@@ -411,13 +405,14 @@ func (c *Cron) updateLabel(id EntryID, label string) {
 
 func (c *Cron) setEntryActive(id EntryID, active bool) {
 	if err := c.entries.WithE(func(entries *entries) error {
-		entry, idx := utils.FindIdx((*entries).entriesHeap, findByIDFn(id))
-		if entry == nil || (*entry).Active == active {
+		entry, exists := entries.entriesMap[id]
+		if !exists || (*entry).Active == active {
 			return errors.New("not found or unchanged")
 		}
+		newNext := utils.TernaryOrZero(active, (*entry).Schedule.Next(c.now()))
 		(*entry).Active = active
-		(*entry).Next = utils.TernaryOrZero(active, (*entry).Schedule.Next(c.now()))
-		reInsertEntry(&entries.entriesHeap, idx) // setEntryActive
+		(*entry).Next = newNext
+		_ = entries.heap.Update(id, newNext)
 		return nil
 	}); err != nil {
 		return
@@ -435,14 +430,15 @@ func (c *Cron) updateScheduleWithSpec(id EntryID, spec string) error {
 
 func (c *Cron) updateSchedule(id EntryID, spec *string, schedule Schedule) error {
 	if err := c.entries.WithE(func(entries *entries) error {
-		entry, idx := utils.FindIdx((*entries).entriesHeap, findByIDFn(id))
-		if entry == nil {
+		entry, exists := entries.entriesMap[id]
+		if !exists {
 			return ErrEntryNotFound
 		}
+		newNext := utils.TernaryOrZero((*entry).Active, schedule.Next(c.now()))
 		(*entry).Spec = spec
 		(*entry).Schedule = schedule
-		(*entry).Next = utils.TernaryOrZero((*entry).Active, schedule.Next(c.now()))
-		reInsertEntry(&entries.entriesHeap, idx) // updateSchedule
+		(*entry).Next = newNext
+		_ = entries.heap.Update(id, newNext)
 		return nil
 	}); err != nil {
 		return err
@@ -453,7 +449,7 @@ func (c *Cron) updateSchedule(id EntryID, spec *string, schedule Schedule) error
 
 func (c *Cron) getNextTime() (out time.Time) {
 	c.entries.RWith(func(entries entries) {
-		if e := entries.entriesHeap.Peek(); e != nil && e.Active {
+		if e := entries.heap.Peek(); e != nil && e.Active {
 			out = e.Next
 		}
 	})
@@ -503,14 +499,14 @@ func (c *Cron) runDueEntries() {
 		now := c.now()
 		c.entries.With(func(entries *entries) {
 			for {
-				entry := entries.entriesHeap.Peek()
+				entry := entries.heap.Peek()
 				if entry == nil || entry.Next.After(now) || entry.Next.IsZero() || !entry.Active {
 					break
 				}
-				entry = heap.Pop(&entries.entriesHeap).(*Entry)
+				entry = entries.heap.Pop()
 				entry.Prev = entry.Next
 				entry.Next = entry.Schedule.Next(now)
-				heap.Push(&entries.entriesHeap, entry)
+				entries.heap.Push(entry)
 				c.startJob(*entry)
 			}
 		})
@@ -532,10 +528,10 @@ func (c *Cron) setLocation(newLoc *time.Location) {
 func (c *Cron) setEntriesNext() {
 	now := c.now()
 	c.entries.With(func(entries *entries) {
-		for _, entry := range (*entries).entriesHeap {
+		for _, entry := range entries.heap.entries {
 			entry.Next = utils.TernaryOrZero(entry.Active, entry.Schedule.Next(now))
 		}
-		heap.Init(&entries.entriesHeap)
+		entries.heap.Init()
 	})
 }
 
@@ -555,32 +551,21 @@ func (c *Cron) removeEntry(id EntryID) {
 	c.runningJobsMap.Delete(id)
 	c.entries.With(func(entries *entries) {
 		delete(entries.entriesMap, id)
-		removeEntry(&entries.entriesHeap, id)
+		entries.heap.Remove(id)
 	})
-}
-
-func removeEntry(entries *EntryHeap, id EntryID) {
-	if _, i := utils.FindIdx(*entries, findByIDFn(id)); i != -1 {
-		heap.Remove(entries, i)
-	}
-}
-
-func reInsertEntry(entries *EntryHeap, idx int) {
-	entry := heap.Remove(entries, idx).(*Entry)
-	heap.Push(entries, entry)
 }
 
 func (c *Cron) getEntries() (out []Entry) {
 	c.entries.With(func(entries *entries) {
-		clone := new(EntryHeap)
-		l := len(entries.entriesHeap)
+		clone := newEntryHeap()
+		l := entries.heap.Len()
 		out = make([]Entry, l)
 		for i := 0; i < l; i++ {
-			entry := heap.Pop(&entries.entriesHeap).(*Entry)
+			entry := entries.heap.Pop()
 			out[i] = *entry
-			heap.Push(clone, entry)
+			clone.Push(entry)
 		}
-		(*entries).entriesHeap = *clone
+		(*entries).heap = clone
 	})
 	return
 }
