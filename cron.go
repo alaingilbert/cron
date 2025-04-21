@@ -381,9 +381,7 @@ func (c *Cron) addEntry(entry Entry, opts ...EntryOption) (EntryID, error) {
 	if entry.ID == zeroID {
 		return zeroID, errors.New("id cannot be empty")
 	}
-	if !entry.Active {
-		entry.Next = time.Time{}
-	}
+	entry.Next = utils.TernaryOrZero(entry.Active, entry.Next)
 	if c.entryExists(entry.ID) {
 		return zeroID, ErrIDAlreadyUsed
 	}
