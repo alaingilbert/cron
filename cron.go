@@ -44,9 +44,10 @@ type Cron struct {
 }
 
 type jobRunsInner struct {
-	mapping   map[RunID]*jobRunStruct
-	running   []*jobRunStruct
-	completed []*jobRunStruct
+	mapping     map[RunID]*jobRunStruct
+	running     []*jobRunStruct
+	completed   []*jobRunStruct
+	completedTS []time.Time
 }
 
 type entries struct {
@@ -261,19 +262,26 @@ func startCleanupThread(c *Cron) {
 			case <-c.ctx.Done():
 				return
 			}
-			now := c.clock.Now()
-			thresholdTime := now.Add(-keepCompletedRunsDur)
+			var totalCleaned int
+			start := c.clock.Now()
+			thresholdTime := start.Add(-keepCompletedRunsDur)
 			for v := range c.runningJobsMap.IterValues() {
 				v.With(func(inner *jobRunsInner) {
-					for i := len(inner.completed) - 1; i >= 0; i-- {
-						completedJobRun := inner.completed[i]
-						completedAt := completedJobRun.inner.Get().completedAt
-						if completedAt.Before(thresholdTime) {
-							delete(inner.mapping, completedJobRun.runID)
-							inner.completed = slices.Delete(inner.completed, i, i+1)
+					idx := sort.Search(len(inner.completedTS), func(i int) bool {
+						return inner.completedTS[i].After(thresholdTime)
+					})
+					if idx > 0 {
+						for i := 0; i < idx; i++ {
+							delete(inner.mapping, inner.completed[i].runID)
 						}
+						inner.completed = inner.completed[idx:]
+						inner.completedTS = inner.completedTS[idx:]
+						totalCleaned += idx
 					}
 				})
+			}
+			if totalCleaned > 0 {
+				c.logger.Debug("cleaned old runs", "count", totalCleaned, "duration", c.clock.Since(start))
 			}
 			c.lastCleanupTS.Set(c.clock.Now())
 		}
@@ -698,7 +706,9 @@ func (c *Cron) updateJobRuns(entryID EntryID, jobRun *jobRunStruct, isStarting b
 		} else if idx := slices.Index((*v).running, jobRun); idx != -1 {
 			(*v).running = slices.Delete((*v).running, idx, idx+1)
 			if c.keepCompletedRunsDur.Get() > 0 {
+				completedAt := jobRun.inner.Get().completedAt
 				(*v).completed = append((*v).completed, jobRun)
+				(*v).completedTS = append((*v).completedTS, *completedAt)
 			} else {
 				delete((*v).mapping, jobRun.runID)
 			}
