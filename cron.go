@@ -527,14 +527,6 @@ func (c *Cron) setLocation(newLoc *time.Location) {
 	c.entriesUpdated() // setLocation
 }
 
-func (c *Cron) sortEntries(entries *EntryHeap) {
-	sortedEntries := new(EntryHeap)
-	for len(*entries) > 0 {
-		heap.Push(sortedEntries, heap.Pop(entries).(*Entry))
-	}
-	*entries = *sortedEntries
-}
-
 // Reset all entries "Next" property.
 // This is only done when the cron timezone is changed at runtime.
 func (c *Cron) setEntriesNext() {
@@ -543,7 +535,7 @@ func (c *Cron) setEntriesNext() {
 		for _, entry := range (*entries).entriesHeap {
 			entry.Next = utils.TernaryOrZero(entry.Active, entry.Schedule.Next(now))
 		}
-		c.sortEntries(&entries.entriesHeap) // setEntriesNext
+		heap.Init(&entries.entriesHeap)
 	})
 }
 

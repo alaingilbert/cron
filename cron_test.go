@@ -719,6 +719,21 @@ func BenchmarkAddJob(b *testing.B) {
 	}
 }
 
+func BenchmarkSetLocation(b *testing.B) {
+	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
+	for i := 0; i < 1000; i++ {
+		_, _ = cron.Schedule(Every(time.Duration(i)*time.Second), FuncJob(func(context.Context, *Cron, JobRun) error {
+			return nil
+		}))
+	}
+	newLoc, _ := time.LoadLocation("Atlantic/Cape_Verde")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		cron.SetLocation(newLoc)
+	}
+}
+
 func TestLabelEntryOption(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
 	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
