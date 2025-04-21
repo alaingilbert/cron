@@ -376,7 +376,7 @@ func TestStopWithoutStart(t *testing.T) {
 // Simple job that increment an atomic counter every time the job is run
 type baseJob struct{ calls *atomic.Int32 }
 
-func (j baseJob) Run(context.Context, *Cron, Entry) error {
+func (j baseJob) Run(context.Context, *Cron, JobRun) error {
 	j.calls.Add(1)
 	return nil
 }
@@ -386,7 +386,7 @@ type namedJob struct {
 	name  string
 }
 
-func (t namedJob) Run(context.Context, *Cron, Entry) error {
+func (t namedJob) Run(context.Context, *Cron, JobRun) error {
 	t.calls.Add(1)
 	return nil
 }
@@ -559,7 +559,7 @@ func TestJobWithZeroTimeDoesNotRun(t *testing.T) {
 	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	var calls atomic.Int32
 	_, _ = cron.AddJob("* * * * * *", baseJob{&calls})
-	_, _ = cron.Schedule(new(ZeroSchedule), FuncJob(func(context.Context, *Cron, Entry) error {
+	_, _ = cron.Schedule(new(ZeroSchedule), FuncJob(func(context.Context, *Cron, JobRun) error {
 		t.Error("expected zero task will not run")
 		return nil
 	}))
@@ -597,8 +597,8 @@ func TestScheduleAfterRemoval(t *testing.T) {
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
 	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
-	hourJob, _ := cron.Schedule(Every(time.Hour), FuncJob(func(context.Context, *Cron, Entry) error { return nil }))
-	_, _ = cron.Schedule(Every(time.Second), FuncJob(func(context.Context, *Cron, Entry) error {
+	hourJob, _ := cron.Schedule(Every(time.Hour), FuncJob(func(context.Context, *Cron, JobRun) error { return nil }))
+	_, _ = cron.Schedule(Every(time.Second), FuncJob(func(context.Context, *Cron, JobRun) error {
 		switch calls.Load() {
 		case 0:
 			calls.Add(1)
