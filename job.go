@@ -417,7 +417,9 @@ func N(n int, j IntoJob) Job {
 	return NWrapper(n)(j)
 }
 
-func ThresholdClbWrapper(threshold time.Duration, clb func(ctx context.Context, c *Cron, e Entry, threshold, dur time.Duration, err error)) JobWrapper {
+type ThresholdCallback func(ctx context.Context, c *Cron, e Entry, threshold, dur time.Duration, err error)
+
+func ThresholdClbWrapper(threshold time.Duration, clb ThresholdCallback) JobWrapper {
 	return func(job IntoJob) Job {
 		return FuncJob(func(ctx context.Context, c *Cron, e Entry) error {
 			start := c.clock.Now()
@@ -432,7 +434,7 @@ func ThresholdClbWrapper(threshold time.Duration, clb func(ctx context.Context, 
 }
 
 // ThresholdClb execute a callback if the job runs longer than the specified threshold.
-func ThresholdClb(threshold time.Duration, j IntoJob, clb func(ctx context.Context, c *Cron, e Entry, threshold, dur time.Duration, err error)) Job {
+func ThresholdClb(threshold time.Duration, j IntoJob, clb ThresholdCallback) Job {
 	return ThresholdClbWrapper(threshold, clb)(j)
 }
 
