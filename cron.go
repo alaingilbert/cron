@@ -1007,24 +1007,24 @@ func (c *Cron) runWithRecovery(jobRun *jobRunStruct) {
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Error("job panic", "label", entry.Label, "entryID", entry.ID, "runID", runID, "error", r, "stack", string(debug.Stack()))
-			makeEvent(c, entry, jobRun, JobPanic)
+			makeEvent(c, jobRun, JobPanic)
 		}
 		logger.Info("job completed", "label", entry.Label, "entryID", entry.ID, "runID", runID, "duration", clock.Since(start))
-		makeEvent(c, entry, jobRun, JobCompleted)
+		makeEvent(c, jobRun, JobCompleted)
 	}()
 	logger.Info("job start", "label", entry.Label, "entryID", entry.ID, "runID", runID)
-	makeEvent(c, entry, jobRun, JobStart)
+	makeEvent(c, jobRun, JobStart)
 	if err := entry.job.Run(jobRun.ctx, c, jobRun.export()); err != nil {
 		logger.Error("job error", "label", entry.Label, "entryID", entry.ID, "runID", runID, "error", err)
-		makeEventErr(c, entry, jobRun, JobErr, err)
+		makeEventErr(c, jobRun, JobErr, err)
 	}
 }
 
-func makeEvent(c *Cron, entry Entry, jobRun *jobRunStruct, typ JobEventType) {
-	makeEventErr(c, entry, jobRun, typ, nil)
+func makeEvent(c *Cron, jobRun *jobRunStruct, typ JobEventType) {
+	makeEventErr(c, jobRun, typ, nil)
 }
 
-func makeEventErr(c *Cron, entry Entry, jobRun *jobRunStruct, typ JobEventType, err error) {
+func makeEventErr(c *Cron, jobRun *jobRunStruct, typ JobEventType, err error) {
 	clock := c.clock
 	now := clock.Now()
 	var opt func(*jobRunInner)
@@ -1043,7 +1043,7 @@ func makeEventErr(c *Cron, entry Entry, jobRun *jobRunStruct, typ JobEventType, 
 		utils.ApplyOptions(inner, opt)
 		inner.addEvent(evt)
 	})
-	c.ps.Pub(entry.ID, evt)
+	c.ps.Pub(jobRun.entry.ID, evt)
 	triggerHooks(c, jobRun.ctx, jobRun.export(), typ)
 }
 
