@@ -383,32 +383,36 @@ func startCleanupThread(c *Cron) {
 			case <-c.ctx.Done():
 				return
 			}
-			var totalCleaned atomic.Int32
-			start := c.clock.Now()
-			thresholdTime := start.Add(-keepCompletedRunsDur)
-			workerCount := runtime.NumCPU()
-			utils.ParallelForEach(c.ctx, c.runningJobsMap.IterValues(), workerCount, func(v *mtx.RWMtx[jobRunsInner]) {
-				v.With(func(inner *jobRunsInner) {
-					idx := sort.Search(len(inner.completedTS), func(i int) bool {
-						return inner.completedTS[i].After(thresholdTime)
-					})
-					if idx > 0 {
-						for i := 0; i < idx; i++ {
-							jobRun := inner.completed[i]
-							freeJobRun(inner, jobRun)
-						}
-						inner.completed = inner.completed[idx:]
-						inner.completedTS = inner.completedTS[idx:]
-						totalCleaned.Add(int32(idx))
-					}
-				})
-			})
-			if count := totalCleaned.Load(); count > 0 {
-				c.logger.Debug("cleaned old runs", "count", count, "workers", workerCount, "duration", c.clock.Since(start))
-			}
-			c.lastCleanupTS.Set(c.clock.Now())
+			c.cleanupOldRuns(keepCompletedRunsDur)
 		}
 	}()
+}
+
+func (c *Cron) cleanupOldRuns(keepCompletedRunsDur time.Duration) {
+	var totalCleaned atomic.Int32
+	start := c.clock.Now()
+	thresholdTime := start.Add(-keepCompletedRunsDur)
+	workerCount := runtime.NumCPU()
+	utils.ParallelForEach(c.ctx, c.runningJobsMap.IterValues(), workerCount, func(v *mtx.RWMtx[jobRunsInner]) {
+		v.With(func(inner *jobRunsInner) {
+			idx := sort.Search(len(inner.completedTS), func(i int) bool {
+				return inner.completedTS[i].After(thresholdTime)
+			})
+			if idx > 0 {
+				for i := 0; i < idx; i++ {
+					jobRun := inner.completed[i]
+					freeJobRun(inner, jobRun)
+				}
+				inner.completed = inner.completed[idx:]
+				inner.completedTS = inner.completedTS[idx:]
+				totalCleaned.Add(int32(idx))
+			}
+		})
+	})
+	if count := totalCleaned.Load(); count > 0 {
+		c.logger.Debug("cleaned old runs", "count", count, "workers", workerCount, "duration", c.clock.Since(start))
+	}
+	c.lastCleanupTS.Set(c.clock.Now())
 }
 
 func (c *Cron) cleanupNow() {
