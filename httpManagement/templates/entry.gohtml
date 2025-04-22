@@ -41,7 +41,7 @@
     <label for="spec">Job spec:</label>
     <form method="POST">
         <input type="hidden" name="formName" value="updateSpec" />
-        <input type="text" name="spec" value="{{ .Entry.Spec }}" placeholder="Spec" />
+        <input type="text" name="spec" value="{{ if .Entry.Spec }}{{ .Entry.Spec }}{{ end }}" placeholder="Spec" />
         <input type="submit" value="Update spec" id="spec" />
     </form>
 </div>
