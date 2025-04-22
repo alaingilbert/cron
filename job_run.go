@@ -68,6 +68,7 @@ func acquireJobRun(ctx context.Context, clock clockwork.Clock, entry Entry) *job
 	jr.entry = entry
 	jr.runID = RunID(utils.UuidV4Str())
 	jr.createdAt = clock.Now()
+	jr.logsBuf = bytes.Buffer{}
 	jr.logger = slog.New(slog.NewTextHandler(&jr.logsBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	jr.inner.With(func(inner *jobRunInner) {
 		inner.events = inner.events[:0] // Reset slice
@@ -81,8 +82,6 @@ func acquireJobRun(ctx context.Context, clock clockwork.Clock, entry Entry) *job
 
 func releaseJobRun(jr *jobRunStruct) {
 	jr.cancel() // Ensure context is cleaned up
-	jr.logsBuf = bytes.Buffer{}
-	jr.logger = nil
 	jobRunPool.Put(jr)
 }
 
