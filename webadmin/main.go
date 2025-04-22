@@ -77,44 +77,40 @@ func (m M) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type indexData struct {
+type commonData struct {
 	Css       template.CSS
 	Now       time.Time
 	CleanupTS time.Time
-	JobRuns   []cron.JobRun
-	Entries   []cron.Entry
-	Hooks     []cron.Hook
+}
+
+type indexData struct {
+	commonData
+	JobRuns []cron.JobRun
+	Entries []cron.Entry
+	Hooks   []cron.Hook
 }
 
 type completedData struct {
-	Css              template.CSS
-	Now              time.Time
-	CleanupTS        time.Time
+	commonData
 	CompletedJobRuns []cron.JobRun
 }
 
 type entryData struct {
-	Css              template.CSS
-	Now              time.Time
-	CleanupTS        time.Time
+	commonData
 	Entry            cron.Entry
 	JobRuns          []cron.JobRun
 	CompletedJobRuns []cron.JobRun
 }
 
 type runData struct {
-	Css       template.CSS
-	Now       time.Time
-	CleanupTS time.Time
-	JobRun    cron.JobRun
-	Entry     cron.Entry
+	commonData
+	JobRun cron.JobRun
+	Entry  cron.Entry
 }
 
 type hookData struct {
-	Css       template.CSS
-	Now       time.Time
-	CleanupTS time.Time
-	Hook      cron.Hook
+	commonData
+	Hook cron.Hook
 }
 
 func indexHandler(c *cron.Cron) http.Handler {
@@ -153,12 +149,14 @@ func indexHandler(c *cron.Cron) http.Handler {
 		entries := c.Entries()
 		hooks := c.GetHooks()
 		data := indexData{
-			JobRuns:   jobRuns,
-			Entries:   entries,
-			Hooks:     hooks,
-			Css:       template.CSS(style),
-			Now:       time.Now(),
-			CleanupTS: c.GetCleanupTS(),
+			commonData: commonData{
+				Css:       template.CSS(style),
+				Now:       time.Now(),
+				CleanupTS: c.GetCleanupTS(),
+			},
+			JobRuns: jobRuns,
+			Entries: entries,
+			Hooks:   hooks,
 		}
 		return render(http.StatusOK, "templates/index.gohtml", data, w)
 	})
@@ -176,10 +174,12 @@ func completedHandler(c *cron.Cron) http.Handler {
 		completedJobRuns := c.CompletedJobs()
 		slices.Reverse(completedJobRuns)
 		data := completedData{
+			commonData: commonData{
+				Css:       template.CSS(style),
+				Now:       time.Now(),
+				CleanupTS: c.GetCleanupTS(),
+			},
 			CompletedJobRuns: completedJobRuns,
-			Css:              template.CSS(style),
-			Now:              time.Now(),
-			CleanupTS:        c.GetCleanupTS(),
 		}
 		return render(http.StatusOK, "templates/completed.gohtml", data, w)
 	})
@@ -215,12 +215,14 @@ func entryHandler(c *cron.Cron) http.Handler {
 		completedJobRuns, _ := c.CompletedJobRunsFor(entryID)
 		slices.Reverse(completedJobRuns)
 		data := entryData{
+			commonData: commonData{
+				Css:       template.CSS(style),
+				Now:       time.Now(),
+				CleanupTS: c.GetCleanupTS(),
+			},
 			Entry:            entry,
 			JobRuns:          jobRuns,
 			CompletedJobRuns: completedJobRuns,
-			Css:              template.CSS(style),
-			Now:              time.Now(),
-			CleanupTS:        c.GetCleanupTS(),
 		}
 		return render(http.StatusOK, "templates/entry.gohtml", data, w)
 	})
@@ -243,11 +245,13 @@ func runHandler(c *cron.Cron) http.Handler {
 			return redirectTo(w, "/entries/"+string(entryID)+"/runs/"+string(jobRun.RunID))
 		}
 		data := runData{
-			JobRun:    jobRun,
-			Entry:     entry,
-			Css:       template.CSS(style),
-			Now:       time.Now(),
-			CleanupTS: c.GetCleanupTS(),
+			commonData: commonData{
+				Css:       template.CSS(style),
+				Now:       time.Now(),
+				CleanupTS: c.GetCleanupTS(),
+			},
+			JobRun: jobRun,
+			Entry:  entry,
 		}
 		return render(http.StatusOK, "templates/run.gohtml", data, w)
 	})
@@ -275,10 +279,12 @@ func hookHandler(c *cron.Cron) http.Handler {
 			return redirectTo(w, "/hooks/"+string(hookID))
 		}
 		data := hookData{
-			Hook:      hook,
-			Css:       template.CSS(style),
-			Now:       time.Now(),
-			CleanupTS: c.GetCleanupTS(),
+			commonData: commonData{
+				Css:       template.CSS(style),
+				Now:       time.Now(),
+				CleanupTS: c.GetCleanupTS(),
+			},
+			Hook: hook,
 		}
 		return render(http.StatusOK, "templates/hook.gohtml", data, w)
 	})
