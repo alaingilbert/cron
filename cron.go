@@ -559,34 +559,45 @@ func (c *Cron) hookClb(id HookID, clb func(*hookStruct)) {
 	})
 }
 
+func lookupClb[K comparable, V any, M map[K]V](m M, k K, clb func(V), e error) error {
+	if hook, ok := m[k]; ok {
+		clb(hook)
+		return nil
+	}
+	return e
+}
+
 func (c *Cron) hookRClb(id HookID, clb func(hookMeta)) error {
 	return c.hooks.RWithE(func(v hooksContainer) error {
-		if hook, ok := v.hooksMap[id]; ok {
-			clb(hook)
-			return nil
-		}
-		return ErrHookNotFound
+		return lookupClb(v.hooksMap, id, clb, ErrHookNotFound)
 	})
 }
 
 func (c *Cron) entryRClb(id EntryID, clb func(*Entry)) error {
 	return c.entries.RWithE(func(entries entries) error {
-		if entry, ok := entries.entriesMap[id]; ok {
-			clb(entry)
-			return nil
-		}
-		return ErrEntryNotFound
+		return lookupClb(entries.entriesMap, id, clb, ErrEntryNotFound)
 	})
 }
 
 func jobRunRClb(mx *mtx.RWMtx[jobRunsInner], runID RunID, clb func(*jobRunStruct)) error {
 	return mx.RWithE(func(jobRunsIn jobRunsInner) error {
-		if run, ok := jobRunsIn.mapping[runID]; ok {
-			clb(run)
-			return nil
-		}
-		return ErrJobRunNotFound
+		return lookupClb(jobRunsIn.mapping, runID, clb, ErrJobRunNotFound)
 	})
+}
+
+func (c *Cron) getHook(id HookID) (out Hook, err error) {
+	err = c.hookRClb(id, func(hook hookMeta) { out = hook.hook.export(hook.evt, hook.entryID) })
+	return out, err
+}
+
+func (c *Cron) getEntry(id EntryID) (out Entry, err error) {
+	err = c.entryRClb(id, func(entry *Entry) { out = *entry })
+	return out, err
+}
+
+func (c *Cron) getJobRun(entryID EntryID, runID RunID) (out JobRun, err error) {
+	err = c.getJobRunClb(entryID, runID, func(run *jobRunStruct) { out = run.export() })
+	return out, err
 }
 
 func (c *Cron) enableHook(id HookID) {
@@ -608,27 +619,6 @@ func (c *Cron) getHooks() (out []Hook) {
 		}
 	})
 	return
-}
-
-func (c *Cron) getHook(id HookID) (out Hook, err error) {
-	err = c.hookRClb(id, func(hook hookMeta) {
-		out = hook.hook.export(hook.evt, hook.entryID)
-	})
-	return out, err
-}
-
-func (c *Cron) getEntry(id EntryID) (out Entry, err error) {
-	err = c.entryRClb(id, func(entry *Entry) {
-		out = *entry
-	})
-	return out, err
-}
-
-func (c *Cron) getJobRun(entryID EntryID, runID RunID) (out JobRun, err error) {
-	err = c.getJobRunClb(entryID, runID, func(run *jobRunStruct) {
-		out = run.export()
-	})
-	return out, err
 }
 
 func (c *Cron) onJobStart(clb HookFn, opts ...HookOption) HookID {
