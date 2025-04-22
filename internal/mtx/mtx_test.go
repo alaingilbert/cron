@@ -23,6 +23,10 @@ func TestSetAndGet(t *testing.T) {
 	m := NewMtx(10)
 	m.Set(20)
 	assert.Equal(t, 20, m.Get())
+
+	m1 := NewRWMtx(10)
+	m1.Set(20)
+	assert.Equal(t, 20, m1.Get())
 }
 
 func TestWith(t *testing.T) {
