@@ -1612,3 +1612,68 @@ func TestOnEntryJobStartAsync(t *testing.T) {
 	advanceAndCycle(cron, time.Second)
 	assert.Equal(t, int32(1), calls.Load())
 }
+
+func TestEnableHook(t *testing.T) {
+	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	cron := New(WithClock(clock), WithParser(SecondParser), WithLogger(newNoOpLogger()))
+	var calls atomic.Int32
+	hookID := cron.OnJobStart(func(ctx context.Context, c *Cron, id HookID, jr JobRun) {
+		calls.Add(1)
+	}, HookSync)
+	cron.DisableHook(hookID)
+	cron.Start()
+	_, _ = cron.AddJob("* * * * * *", func() {})
+	advanceAndCycle(cron, time.Second)
+	assert.Equal(t, int32(0), calls.Load()) // Hook is disabled, should not be called
+	cron.EnableHook(hookID)
+	advanceAndCycle(cron, time.Second)
+	assert.Equal(t, int32(1), calls.Load()) // Hook is enabled, should be called
+}
+
+func TestDisableHook(t *testing.T) {
+	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	cron := New(WithClock(clock), WithParser(SecondParser), WithLogger(newNoOpLogger()))
+	var calls atomic.Int32
+	hookID := cron.OnJobStart(func(ctx context.Context, c *Cron, id HookID, jr JobRun) {
+		calls.Add(1)
+	}, HookSync)
+	cron.Start()
+	_, _ = cron.AddJob("* * * * * *", func() {})
+	advanceAndCycle(cron, time.Second)
+	assert.Equal(t, int32(1), calls.Load()) // Hook is enabled, should be called
+	cron.DisableHook(hookID)
+	advanceAndCycle(cron, time.Second)
+	assert.Equal(t, int32(1), calls.Load()) // Hook is disabled, should not be called
+}
+
+func TestGetHooks(t *testing.T) {
+	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	cron := New(WithClock(clock), WithLogger(newNoOpLogger()))
+	hookID1 := cron.OnJobStart(func(ctx context.Context, c *Cron, id HookID, jr JobRun) {}, HookSync)
+	hookID2 := cron.OnJobCompleted(func(ctx context.Context, c *Cron, id HookID, jr JobRun) {}, HookSync)
+	hooks := cron.GetHooks()
+	assert.Equal(t, 2, len(hooks))
+	assert.True(t, hooks[0].ID == hookID1 || hooks[0].ID == hookID2)
+	assert.True(t, hooks[1].ID == hookID1 || hooks[1].ID == hookID2)
+}
+
+func TestGetHook(t *testing.T) {
+	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	cron := New(WithClock(clock), WithLogger(newNoOpLogger()))
+	hookID := cron.OnJobStart(func(ctx context.Context, c *Cron, id HookID, jr JobRun) {}, HookSync)
+	hook, err := cron.GetHook(hookID)
+	assert.NoError(t, err)
+	assert.Equal(t, hookID, hook.ID)
+	_, err = cron.GetHook("nonexistent-hook")
+	assert.ErrorIs(t, err, ErrHookNotFound)
+}
+
+func TestSetHookLabel(t *testing.T) {
+	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	cron := New(WithClock(clock), WithLogger(newNoOpLogger()))
+	hookID := cron.OnJobStart(func(ctx context.Context, c *Cron, id HookID, jr JobRun) {}, HookSync)
+	cron.SetHookLabel(hookID, "test-label")
+	hook, err := cron.GetHook(hookID)
+	assert.NoError(t, err)
+	assert.Equal(t, "test-label", hook.Label)
+}
