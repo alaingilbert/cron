@@ -579,8 +579,8 @@ func (c *Cron) entryRClb(id EntryID, clb func(*Entry)) error {
 	})
 }
 
-func jobRunRClb(jobRunsInnerMtx *mtx.RWMtx[jobRunsInner], runID RunID, clb func(*jobRunStruct)) error {
-	return jobRunsInnerMtx.RWithE(func(jobRunsIn jobRunsInner) error {
+func jobRunRClb(mx *mtx.RWMtx[jobRunsInner], runID RunID, clb func(*jobRunStruct)) error {
+	return mx.RWithE(func(jobRunsIn jobRunsInner) error {
 		if run, ok := jobRunsIn.mapping[runID]; ok {
 			clb(run)
 			return nil
