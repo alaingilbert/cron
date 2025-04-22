@@ -1753,3 +1753,10 @@ func TestHooksContainerIterHooksEarlyReturns(t *testing.T) {
 		t.Errorf("Expected iteration to stop after 3 hooks, got %d", count)
 	}
 }
+
+func TestCleanupNow(t *testing.T) {
+	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	cron := New(WithClock(clock), WithLogger(newNoOpLogger()))
+	cron.Start()
+	cron.CleanupNow()
+}
