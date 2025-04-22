@@ -1680,3 +1680,47 @@ func TestSetHookLabel(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "test-label", hook.Label)
 }
+
+func TestHooksContainerIterHooksEarlyReturns(t *testing.T) {
+	hc := hooksContainer{
+		hooksMap: make(map[HookID]hookMeta),
+		globalHooksMap: map[JobEventType][]*hookStruct{
+			JobStart: {
+				&hookStruct{id: "hook1"},
+				&hookStruct{id: "hook2"},
+			},
+		},
+		entryHooksMap: map[EntryID]map[JobEventType][]*hookStruct{
+			"entry1": {
+				JobStart: {
+					&hookStruct{id: "hook3"},
+					&hookStruct{id: "hook4"},
+				},
+			},
+		},
+	}
+
+	count := 0
+	for _ = range hc.iterHooks() {
+		count++
+		if count == 2 {
+			break
+		}
+	}
+
+	if count != 2 {
+		t.Errorf("Expected iteration to stop after 2 hooks, got %d", count)
+	}
+
+	count = 0
+	for _ = range hc.iterHooks() {
+		count++
+		if count == 3 {
+			break
+		}
+	}
+
+	if count != 3 {
+		t.Errorf("Expected iteration to stop after 3 hooks, got %d", count)
+	}
+}
