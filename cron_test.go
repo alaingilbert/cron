@@ -1760,3 +1760,11 @@ func TestCleanupNow(t *testing.T) {
 	cron.Start()
 	cron.CleanupNow()
 }
+
+func TestSetCleanupInterval(t *testing.T) {
+	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	cron := New(WithClock(clock), WithKeepCompletedRunsDur(0), WithLogger(newNoOpLogger()))
+	cron.Start()
+	cron.SetCleanupInterval(1)
+	cron.SetCleanupInterval(0)
+}
