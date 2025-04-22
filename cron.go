@@ -319,6 +319,9 @@ func (c *Cron) IsRunning(id EntryID) bool { return c.entryIsRunning(id) }
 // RunningJobs returns a list of all currently running jobs across all entries
 func (c *Cron) RunningJobs() []JobRun { return c.runningJobs() }
 
+// CompletedJobs returns a list of all completed job runs across all entries
+func (c *Cron) CompletedJobs() []JobRun { return c.completedJobs() }
+
 // RunningJobsFor returns all currently running jobs for a specific entry
 // // Returns ErrEntryNotFound if the entry doesn't exist.
 func (c *Cron) RunningJobsFor(entryID EntryID) ([]JobRun, error) {
@@ -875,6 +878,10 @@ var getCompletedSliceClb = func(v jobRunsInner) []*jobRunStruct { return v.compl
 
 func (c *Cron) runningJobs() (out []JobRun) {
 	return c.jobRunsClb(getRunningSliceClb)
+}
+
+func (c *Cron) completedJobs() (out []JobRun) {
+	return c.jobRunsClb(getCompletedSliceClb)
 }
 
 func (c *Cron) runningJobsFor(entryID EntryID) (out []JobRun, err error) {
