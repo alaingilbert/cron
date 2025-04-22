@@ -199,7 +199,8 @@ func TestStopWait(t *testing.T) {
 	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
 	c1 := make(chan struct{})
 	c2 := make(chan struct{})
-	_, _ = cron.AddJob("1 0 1 * * *", func() {
+	_, _ = cron.AddJob("1 0 1 * * *", func(jr JobRun) {
+		jr.Logger()
 		clock.SleepNotify(time.Minute, c1)
 	})
 	cron.Start()
