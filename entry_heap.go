@@ -52,6 +52,26 @@ func newEntryHeap() *entryHeap {
 	}
 }
 
+func (h *entryHeap) Clone() *entryHeap {
+	newHeap := newEntryHeap()
+	newHeap.entries = make([]*Entry, len(h.entries))
+	copy(newHeap.entries, h.entries)
+	newHeap.index = make(map[EntryID]int)
+	for k, v := range h.index {
+		newHeap.index[k] = v
+	}
+	return newHeap
+}
+
+func (h *entryHeap) Entries() []Entry {
+	clone := h.Clone()
+	out := make([]Entry, 0, clone.Len())
+	for clone.Len() > 0 {
+		out = append(out, *clone.Pop())
+	}
+	return out
+}
+
 // Less function compares two entries considering zero times
 func (h *entryHeap) less(i, j int) bool {
 	a, b := h.entries[i], h.entries[j]

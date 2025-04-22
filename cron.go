@@ -837,15 +837,7 @@ func (c *Cron) removeEntry(id EntryID) {
 
 func (c *Cron) getEntries() (out []Entry) {
 	c.entries.With(func(entries *entries) {
-		clone := newEntryHeap()
-		l := entries.heap.Len()
-		out = make([]Entry, l)
-		for i := 0; i < l; i++ {
-			entry := entries.heap.Pop()
-			out[i] = *entry
-			clone.Push(entry)
-		}
-		(*entries).heap = clone
+		out = entries.heap.Entries()
 	})
 	return
 }
