@@ -704,23 +704,21 @@ func (c *Cron) modifyEntry(id EntryID, updateFunc func(entry *Entry) bool) error
 }
 
 func (c *Cron) setEntryActive(id EntryID, active bool) {
-	_ = c.modifyEntry(id, func(entry *Entry) bool {
-		if entry.Active != active {
+	_ = c.modifyEntry(id, func(entry *Entry) (updated bool) {
+		if updated = entry.Active != active; updated {
 			entry.Active = active
-			return true
 		}
-		return false
+		return
 	})
 }
 
 func (c *Cron) updateSchedule(id EntryID, spec *string, schedule Schedule) error {
-	return c.modifyEntry(id, func(entry *Entry) bool {
-		if entry.Spec != spec {
+	return c.modifyEntry(id, func(entry *Entry) (updated bool) {
+		if updated = entry.Spec != spec; updated {
 			entry.Spec = spec
 			entry.Schedule = schedule
-			return true
 		}
-		return false
+		return
 	})
 }
 
