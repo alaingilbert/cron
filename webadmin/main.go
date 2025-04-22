@@ -35,32 +35,6 @@ func getCss() string {
 	return string(style)
 }
 
-func getMenu(c *cron.Cron) string {
-	out := `
-<a href="/">home</a> |
-<a href="/completed">completed</a>
-<hr />
-<table>
-	<tr>
-		<td>Current time:</td><td><span class="monospace">` + time.Now().Format(time.DateTime) + `</span></td>
-	</tr>
-	<tr>
-		<td>Last cleanup:</td>
-		<td>`
-	if c.GetCleanupTS().IsZero() {
-		out += `-`
-	} else {
-		out += `<span class="monospace">` + c.GetCleanupTS().Format(time.DateTime) + `</span> <small>(` + utils.ShortDur(c.GetCleanupTS()) + `)</small>`
-	}
-	out += `
-			<form method="POST" action="/cleanup-now/" class="d-inline-block"><input type="submit" value="cleanup now" /></form>
-		</td>
-	</tr>
-</table>
-<hr />`
-	return out
-}
-
 var funcsMap = template.FuncMap{
 	"FmtDate":  func(t time.Time) string { return t.Format(time.DateTime) },
 	"ShortDur": func(t time.Time) string { return utils.ShortDur(t) },
@@ -106,38 +80,43 @@ func (m M) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type indexData struct {
-	Css     template.CSS
-	Menu    template.HTML
-	JobRuns []cron.JobRun
-	Entries []cron.Entry
-	Hooks   []cron.Hook
+	Css       template.CSS
+	Now       time.Time
+	CleanupTS time.Time
+	JobRuns   []cron.JobRun
+	Entries   []cron.Entry
+	Hooks     []cron.Hook
 }
 
 type completedData struct {
 	Css              template.CSS
-	Menu             template.HTML
+	Now              time.Time
+	CleanupTS        time.Time
 	CompletedJobRuns []cron.JobRun
 }
 
 type entryData struct {
 	Css              template.CSS
-	Menu             template.HTML
+	Now              time.Time
+	CleanupTS        time.Time
 	Entry            cron.Entry
 	JobRuns          []cron.JobRun
 	CompletedJobRuns []cron.JobRun
 }
 
 type runData struct {
-	Css    template.CSS
-	Menu   template.HTML
-	JobRun cron.JobRun
-	Entry  cron.Entry
+	Css       template.CSS
+	Now       time.Time
+	CleanupTS time.Time
+	JobRun    cron.JobRun
+	Entry     cron.Entry
 }
 
 type hookData struct {
-	Css  template.CSS
-	Menu template.HTML
-	Hook cron.Hook
+	Css       template.CSS
+	Now       time.Time
+	CleanupTS time.Time
+	Hook      cron.Hook
 }
 
 func indexHandler(c *cron.Cron) http.Handler {
@@ -176,11 +155,12 @@ func indexHandler(c *cron.Cron) http.Handler {
 		entries := c.Entries()
 		hooks := c.GetHooks()
 		data := indexData{
-			JobRuns: jobRuns,
-			Entries: entries,
-			Hooks:   hooks,
-			Css:     template.CSS(getCss()),
-			Menu:    template.HTML(getMenu(c)),
+			JobRuns:   jobRuns,
+			Entries:   entries,
+			Hooks:     hooks,
+			Css:       template.CSS(getCss()),
+			Now:       time.Now(),
+			CleanupTS: c.GetCleanupTS(),
 		}
 		return render(http.StatusOK, "templates/index.gohtml", data, w)
 	})
@@ -200,7 +180,8 @@ func completedHandler(c *cron.Cron) http.Handler {
 		data := completedData{
 			CompletedJobRuns: completedJobRuns,
 			Css:              template.CSS(getCss()),
-			Menu:             template.HTML(getMenu(c)),
+			Now:              time.Now(),
+			CleanupTS:        c.GetCleanupTS(),
 		}
 		return render(http.StatusOK, "templates/completed.gohtml", data, w)
 	})
@@ -240,7 +221,8 @@ func entryHandler(c *cron.Cron) http.Handler {
 			JobRuns:          jobRuns,
 			CompletedJobRuns: completedJobRuns,
 			Css:              template.CSS(getCss()),
-			Menu:             template.HTML(getMenu(c)),
+			Now:              time.Now(),
+			CleanupTS:        c.GetCleanupTS(),
 		}
 		return render(http.StatusOK, "templates/entry.gohtml", data, w)
 	})
@@ -263,10 +245,11 @@ func runHandler(c *cron.Cron) http.Handler {
 			return redirectTo(w, "/entries/"+string(entryID)+"/runs/"+string(jobRun.RunID))
 		}
 		data := runData{
-			JobRun: jobRun,
-			Entry:  entry,
-			Css:    template.CSS(getCss()),
-			Menu:   template.HTML(getMenu(c)),
+			JobRun:    jobRun,
+			Entry:     entry,
+			Css:       template.CSS(getCss()),
+			Now:       time.Now(),
+			CleanupTS: c.GetCleanupTS(),
 		}
 		return render(http.StatusOK, "templates/run.gohtml", data, w)
 	})
@@ -294,9 +277,10 @@ func hookHandler(c *cron.Cron) http.Handler {
 			return redirectTo(w, "/hooks/"+string(hookID))
 		}
 		data := hookData{
-			Hook: hook,
-			Css:  template.CSS(getCss()),
-			Menu: template.HTML(getMenu(c)),
+			Hook:      hook,
+			Css:       template.CSS(getCss()),
+			Now:       time.Now(),
+			CleanupTS: c.GetCleanupTS(),
 		}
 		return render(http.StatusOK, "templates/hook.gohtml", data, w)
 	})

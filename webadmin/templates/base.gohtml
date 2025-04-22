@@ -5,7 +5,26 @@
     <style>{{ .Css }}</style>
 </head>
 <body>
-{{ .Menu }}
+<a href="/">home</a> |
+<a href="/completed">completed</a>
+<hr />
+<table>
+    <tr>
+        <td>Current time:</td><td><span class="monospace">{{ .Now | FmtDate }}</span></td>
+    </tr>
+    <tr>
+        <td>Last cleanup:</td>
+        <td>
+            {{ if .CleanupTS.IsZero }}
+                -
+            {{ else }}
+                <span class="monospace">{{ .CleanupTS | FmtDate }}</span> <small>({{ .CleanupTS | ShortDur }})</small>
+            {{ end }}
+            <form method="POST" action="/cleanup-now/" class="d-inline-block"><input type="submit" value="cleanup now" /></form>
+        </td>
+    </tr>
+</table>
+<hr />
 {{ block "content" . }}{{ end }}
 </body>
 </html>
