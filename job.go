@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/jonboulle/clockwork"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -610,6 +611,22 @@ func SkipIfStillRunning(j IntoJob) Job {
 			return ErrJobAlreadyRunning
 		}
 		return
+	})
+}
+
+// DelayIfStillRunning serializes jobs, delaying subsequent runs until the
+// previous one is complete. Jobs running after a delay of more than a minute
+// have the delay logged at Info.
+func DelayIfStillRunning(j IntoJob) Job {
+	var mu sync.Mutex
+	return FuncJob(func(ctx context.Context, c *Cron, r JobRun) (err error) {
+		start := c.clock.Now()
+		mu.Lock()
+		defer mu.Unlock()
+		if dur := c.clock.Since(start); dur > time.Minute {
+			c.logger.Info("delay", "entryID", r.Entry.ID, "runID", r.RunID, "duration", dur)
+		}
+		return J(j).Run(ctx, c, r)
 	})
 }
 
