@@ -186,7 +186,7 @@ func main() {
 	// It is possible to add hooks for global job events
 	c.OnJobStart(func(ctx context.Context, c *cron.Cron, id cron.HookID, run cron.JobRun) {
 		fmt.Println("job started", run.Entry.ID, run.RunID)
-	})
+	}, cron.HookLabel("global job start hook"))
 	// You can also make a hook for a specific entry
 	// See also OnJobCompleted / OnEntryJobCompleted
 	c.OnEntryJobStart(customJobIDEntryID, func(ctx context.Context, c *cron.Cron, id cron.HookID, run cron.JobRun) {
