@@ -1,11 +1,4 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <title></title>
-    <style>{{ .Css }}</style>
-</head>
-<body>
-{{ .Menu }}
+{{ define "content" }}
 Running jobs ({{ len .JobRuns }})<br />
 <table>
     <thead>
@@ -157,5 +150,4 @@ Hooks ({{ len .Hooks }})<br />
     {{ end }}
     </tbody>
 </table>
-</body>
-</html>
+{{ end }}

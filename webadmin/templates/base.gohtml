@@ -1,0 +1,12 @@
+{{ define "base" }}<!doctype html>
+<html lang="en">
+<head>
+    <title>{{ block "title" . }}Cron admin{{ end }}</title>
+    <style>{{ .Css }}</style>
+</head>
+<body>
+{{ .Menu }}
+{{ block "content" . }}{{ end }}
+</body>
+</html>
+{{ end }}

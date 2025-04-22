@@ -1,10 +1,4 @@
-<!doctype html>
-<html>
-<head>
-    <style>{{ .Css }}</style>
-</head>
-<body>
-{{ .Menu }}
+{{ define "content" }}
 <table class="mb-1">
     <tr><td>Entry ID:</td><td><span class="monospace">{{ .Entry.ID }}</span></td></tr>
     <tr><td>Label:</td><td>{{ .Entry.Label }}</td></tr>
@@ -114,6 +108,4 @@ Completed jobs ({{ len .CompletedJobRuns }})<br />
     {{ end }}
     </tbody>
 </table>
-
-</body>
-</html>
+{{ end }}

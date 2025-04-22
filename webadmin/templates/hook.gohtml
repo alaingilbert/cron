@@ -1,10 +1,4 @@
-<!doctype html>
-<html>
-<head>
-    <style>{{ .Css }}</style>
-</head>
-<body>
-{{ .Menu }}
+{{ define "content" }}
 <table class="mb-1">
     <tr><td>Hook ID:</td><td><span class="monospace">{{ .Hook.ID }}</span></td></tr>
     <tr><td>Entry ID:</td><td>{{ if .Hook.EntryID }}<span class="monospace"><a href="/entries/{{ .Hook.EntryID }}">{{ .Hook.EntryID }}</a></span>{{ else }}-{{ end }}</td></tr>
@@ -38,5 +32,4 @@
         <input type="submit" value="Update label" id="label" />
     </form>
 </div>
-</body>
-</html>
+{{ end }}

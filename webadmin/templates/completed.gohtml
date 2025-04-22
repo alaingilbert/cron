@@ -1,11 +1,4 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <title></title>
-    <style>{{ .Css }}</style>
-</head>
-<body>
-{{ .Menu }}
+{{ define "content" }}
 Completed jobs ({{ len .CompletedJobRuns }})<br />
 <table>
     <thead>
@@ -31,5 +24,4 @@ Completed jobs ({{ len .CompletedJobRuns }})<br />
     {{ end }}
     </tbody>
 </table>
-</body>
-</html>
+{{ end }}
