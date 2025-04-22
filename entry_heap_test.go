@@ -132,3 +132,38 @@ func TestEntryHeap_Peek(t *testing.T) {
 		t.Errorf("peeked entry mismatch: expected %v, got %v", e.ID, got.ID)
 	}
 }
+
+func TestEntryHeap_CheckValid(t *testing.T) {
+	h := newEntryHeap()
+
+	// Empty heap should be valid
+	assert.True(t, h.CheckValid())
+
+	// Single entry heap should be valid
+	e1 := newTestEntry("1", 1*time.Second)
+	h.Push(e1)
+	assert.True(t, h.CheckValid())
+
+	// Multiple entries in valid order
+	e2 := newTestEntry("2", 2*time.Second)
+	h.Push(e2)
+	assert.True(t, h.CheckValid())
+
+	// Force an invalid heap by swapping entries manually
+	h.swap(0, 1)
+	assert.False(t, h.CheckValid())
+
+	// Restore heap validity
+	h.Init()
+	assert.True(t, h.CheckValid())
+
+	// Test with zero-time entries
+	e3 := &Entry{ID: "3", Next: time.Time{}}
+	h.Push(e3)
+	assert.True(t, h.CheckValid())
+
+	// Test with inactive entries
+	e4 := &Entry{ID: "4", Next: time.Now().Add(1 * time.Second), Active: false}
+	h.Push(e4)
+	assert.True(t, h.CheckValid())
+}
