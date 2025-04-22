@@ -1359,6 +1359,26 @@ func TestEvents(t *testing.T) {
 	l.Wait(func() bool { return l.NbJobErr() == 2 && l.NbJobCompleted() == 3 })
 }
 
+func TestCompletedJobs(t *testing.T) {
+	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
+	_, _ = cron.AddJob("* * * * * *", func() {})
+	_, _ = cron.AddJob("* * * * * *", func() {})
+	cron.Start()
+	c1 := make(chan struct{})
+	var count atomic.Int32
+	cron.onJobCompleted(func(ctx context.Context, cron *Cron, id HookID, run JobRun) {
+		newCount := count.Add(1)
+		if newCount == 2 {
+			close(c1)
+		}
+	})
+	advanceAndCycle(cron, time.Second)
+	<-c1
+	jobs := cron.CompletedJobs()
+	assert.Equal(t, 2, len(jobs))
+}
+
 func TestRunningJobs(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
 	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
