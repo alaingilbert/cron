@@ -37,7 +37,7 @@ type Cron struct {
 	location             atomic.Pointer[time.Location]                // Thread-safe time zone location
 	logger               *slog.Logger                                 // Logger for scheduler events, errors, and diagnostics
 	parser               ScheduleParser                               // Parses cron expressions into schedule objects
-	idFactory            EntryIDFactory                               // Generates a new unique EntryID for each scheduled job
+	idFactory            IDFactory                                    // Generates a new unique ID for Entry/JobRun/Hook
 	jobRunLoggerFactory  JobRunLoggerFactory                          // Factory for creating loggers for individual job runs
 	ps                   *pubsub.PubSub[EntryID, JobEvent]            // PubSub for publishing and subscribing to job events
 	jobRunCreatedCh      chan JobRun                                  // Channel for receiving notifications when new job runs are created
@@ -140,18 +140,18 @@ type ScheduleParser interface {
 	Parse(spec string) (Schedule, error)
 }
 
-type FuncEntryIDFactory func() EntryID
+type FuncIDFactory func() string
 
-func (f FuncEntryIDFactory) Next() EntryID { return f() }
+func (f FuncIDFactory) Next() string { return f() }
 
-type EntryIDFactory interface {
-	Next() EntryID
+type IDFactory interface {
+	Next() string
 }
 
-// UUIDEntryIDFactory generate and format UUID V4
-func UUIDEntryIDFactory() EntryIDFactory {
-	return FuncEntryIDFactory(func() EntryID {
-		return EntryID(utils.UuidV4Str())
+// UuidIDFactory generate and format UUID V4
+func UuidIDFactory() IDFactory {
+	return FuncIDFactory(func() string {
+		return utils.UuidV4Str()
 	})
 }
 
@@ -179,7 +179,7 @@ func New(opts ...Option) *Cron {
 	parentCtx := utils.Or(cfg.Ctx, context.Background())
 	logger := utils.Or(cfg.Logger, slog.Default())
 	parser := utils.Or(cfg.Parser, ScheduleParser(standardParser))
-	idFactory := utils.Or(cfg.IDFactory, UUIDEntryIDFactory())
+	idFactory := utils.Or(cfg.IDFactory, UuidIDFactory())
 	jobRunLoggerFactory := utils.Or(cfg.JobRunLoggerFactory, DefaultJobRunLoggerFactory())
 	keepCompletedRunsDur := utils.Default(cfg.KeepCompletedRunsDur, time.Minute)
 	ctx, cancel := context.WithCancel(parentCtx)
@@ -505,14 +505,14 @@ func (c *Cron) isRunning() bool {
 }
 
 func (c *Cron) onEvt(evt JobEventType, clb HookFn, opts ...HookOption) HookID {
-	hook := hookFunc(clb)
+	hook := hookFunc(c.idFactory, clb)
 	utils.ApplyOptions(hook, opts...)
 	c.hooks.With(func(v *hooksContainer) { v.addHook(evt, hook) })
 	return hook.id
 }
 
 func (c *Cron) onEntryEvt(entryID EntryID, evt JobEventType, clb HookFn, opts ...HookOption) HookID {
-	hook := hookFunc(clb)
+	hook := hookFunc(c.idFactory, clb)
 	utils.ApplyOptions(hook, opts...)
 	c.hooks.With(func(v *hooksContainer) { v.addEntryHook(entryID, evt, hook) })
 	return hook.id
@@ -642,7 +642,7 @@ func (c *Cron) addJobStrict(spec string, job Job, opts ...EntryOption) (EntryID,
 
 func (c *Cron) schedule(spec *string, schedule Schedule, job Job, opts ...EntryOption) (EntryID, error) {
 	entry := Entry{
-		ID:       c.idFactory.Next(),
+		ID:       EntryID(c.idFactory.Next()),
 		job:      job,
 		Spec:     spec,
 		Schedule: schedule,
@@ -984,7 +984,7 @@ func freeJobRun(v *jobRunsInner, jobRun *jobRunStruct) {
 
 // startJob runs the given job in a new goroutine.
 func (c *Cron) startJob(entry Entry) {
-	jobRun := acquireJobRun(c.ctx, c.clock, entry, c.jobRunLoggerFactory)
+	jobRun := acquireJobRun(c.ctx, c.clock, entry, c.idFactory, c.jobRunLoggerFactory)
 	c.runningJobsCount.Add(1)
 	go func() {
 		defer func() {

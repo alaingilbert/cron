@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"github.com/alaingilbert/cron/internal/mtx"
-	"github.com/alaingilbert/cron/internal/utils"
 	"github.com/jonboulle/clockwork"
 	"log/slog"
 	"sync"
@@ -61,12 +60,12 @@ var jobRunPool = sync.Pool{
 	},
 }
 
-func acquireJobRun(ctx context.Context, clock clockwork.Clock, entry Entry, loggerFactory JobRunLoggerFactory) *jobRunStruct {
+func acquireJobRun(ctx context.Context, clock clockwork.Clock, entry Entry, idFactory IDFactory, loggerFactory JobRunLoggerFactory) *jobRunStruct {
 	jr := jobRunPool.Get().(*jobRunStruct)
 	jr.ctx, jr.cancel = context.WithCancel(ctx)
 	jr.clock = clock
 	jr.entry = entry
-	jr.runID = RunID(utils.UuidV4Str())
+	jr.runID = RunID(idFactory.Next())
 	jr.createdAt = clock.Now()
 	jr.logsBuf = bytes.Buffer{}
 	jr.logger = loggerFactory.New(&jr.logsBuf)

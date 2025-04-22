@@ -2,8 +2,6 @@ package cron
 
 import (
 	"context"
-
-	"github.com/alaingilbert/cron/internal/utils"
 )
 
 // HookFn is a function type for cron job hooks.
@@ -12,9 +10,9 @@ type HookFn func(context.Context, *Cron, HookID, JobRun)
 // HookID is a unique identifier for a cron job hook.
 type HookID string
 
-func hookFunc(fn HookFn) *hookStruct {
+func hookFunc(idFactory IDFactory, fn HookFn) *hookStruct {
 	return &hookStruct{
-		id:       HookID(utils.UuidV4Str()),
+		id:       HookID(idFactory.Next()),
 		runAsync: true,
 		active:   true,
 		fn:       fn,

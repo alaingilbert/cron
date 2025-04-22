@@ -15,7 +15,7 @@ type Config struct {
 	Clock                clockwork.Clock
 	Logger               *slog.Logger
 	Parser               ScheduleParser
-	IDFactory            EntryIDFactory
+	IDFactory            IDFactory
 	JobRunLoggerFactory  JobRunLoggerFactory
 	KeepCompletedRunsDur *time.Duration
 }
@@ -73,7 +73,7 @@ func WithParser(p ScheduleParser) Option {
 }
 
 // WithIDFactory ...
-func WithIDFactory(idFactory EntryIDFactory) Option {
+func WithIDFactory(idFactory IDFactory) Option {
 	return func(c *Config) {
 		c.IDFactory = idFactory
 	}
