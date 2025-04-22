@@ -82,6 +82,7 @@ func acquireJobRun(ctx context.Context, clock clockwork.Clock, entry Entry, logg
 
 func releaseJobRun(jr *jobRunStruct) {
 	jr.cancel() // Ensure context is cleaned up
+	jr.logsBuf = bytes.Buffer{}
 	jobRunPool.Put(jr)
 }
 
