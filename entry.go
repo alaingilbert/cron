@@ -5,9 +5,6 @@ import (
 	"time"
 )
 
-// CronID is the type to use for all internal IDs (EntryID, RunID, HookID)
-type CronID string
-
 // EntryID ...
 type EntryID CronID
 
