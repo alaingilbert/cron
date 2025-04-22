@@ -273,6 +273,8 @@ func (j *Job31Wrapper) Run(ctx context.Context, c *Cron, r JobRun) error {
 	return j.Job31.Run(ctx, c, r.Entry)
 }
 
+// IntoJob is something that can be cast into a Job.
+// See the J helper documentation for all accepted function signatures.
 type IntoJob any
 
 // J is a helper to turn a IntoJob into a Job
