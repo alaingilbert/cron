@@ -672,3 +672,27 @@ func Chain(j IntoJob, wrappers ...JobWrapper) Job {
 	}
 	return job
 }
+
+// WithRetryWrapper creates a JobWrapper that retries a job up to maxRetry times
+func WithRetryWrapper(maxRetry int) JobWrapper {
+	return func(job IntoJob) Job {
+		return FuncJob(func(ctx context.Context, c *Cron, r JobRun) error {
+			for i := 0; i <= maxRetry; i++ {
+				if err := J(job).Run(ctx, c, r); err != nil {
+					select {
+					case <-c.clock.After(time.Duration(i+1) * time.Second):
+					case <-ctx.Done():
+					}
+					continue
+				}
+				break
+			}
+			return nil
+		})
+	}
+}
+
+// WithRetry runs a job with retries up to maxRetry times
+func WithRetry(maxRetry int, job IntoJob) Job {
+	return WithRetryWrapper(maxRetry)(job)
+}
