@@ -570,6 +570,28 @@ func (c *Cron) hookRClb(id HookID, clb func(hookMeta)) error {
 	return err
 }
 
+func (c *Cron) entryRClb(id EntryID, clb func(*Entry)) error {
+	err := c.entries.RWithE(func(entries entries) error {
+		if entry, ok := entries.entriesMap[id]; ok {
+			clb(entry)
+			return nil
+		}
+		return ErrEntryNotFound
+	})
+	return err
+}
+
+func (c *Cron) jobRunRClb(jobRunsInnerMtx *mtx.RWMtx[jobRunsInner], runID RunID, clb func(*jobRunStruct)) error {
+	err := jobRunsInnerMtx.RWithE(func(jobRunsIn jobRunsInner) error {
+		if run, ok := jobRunsIn.mapping[runID]; ok {
+			clb(run)
+			return nil
+		}
+		return ErrJobRunNotFound
+	})
+	return err
+}
+
 func (c *Cron) enableHook(id HookID) {
 	c.hookClb(id, func(hook *hookStruct) { (*hook).active = true })
 }
@@ -594,6 +616,20 @@ func (c *Cron) getHooks() (out []Hook) {
 func (c *Cron) getHook(id HookID) (out Hook, err error) {
 	err = c.hookRClb(id, func(hook hookMeta) {
 		out = hook.hook.export(hook.evt, hook.entryID)
+	})
+	return out, err
+}
+
+func (c *Cron) getEntry(id EntryID) (out Entry, err error) {
+	err = c.entryRClb(id, func(entry *Entry) {
+		out = *entry
+	})
+	return out, err
+}
+
+func (c *Cron) getJobRun(entryID EntryID, runID RunID) (out JobRun, err error) {
+	err = c.getJobRunClb(entryID, runID, func(run *jobRunStruct) {
+		out = run.export()
 	})
 	return out, err
 }
@@ -845,41 +881,12 @@ func (c *Cron) getEntries() (out []Entry) {
 	return
 }
 
-func (c *Cron) getEntry(id EntryID) (Entry, error) {
-	var out Entry
-	err := c.entries.RWithE(func(entries entries) error {
-		if entry, ok := entries.entriesMap[id]; ok {
-			out = *entry
-			return nil
-		}
-		return ErrEntryNotFound
-	})
-	return out, err
-}
-
 func (c *Cron) getJobRunClb(entryID EntryID, runID RunID, clb func(*jobRunStruct)) error {
 	jobRunsInnerMtx, ok := c.runningJobsMap.Load(entryID)
 	if !ok {
 		return ErrEntryNotFound
 	}
-	if err := jobRunsInnerMtx.RWithE(func(jobRunsIn jobRunsInner) error {
-		if run, ok := jobRunsIn.mapping[runID]; ok {
-			clb(run)
-			return nil
-		}
-		return ErrJobRunNotFound
-	}); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (c *Cron) getJobRun(entryID EntryID, runID RunID) (JobRun, error) {
-	var jobRunPub JobRun
-	err := c.getJobRunClb(entryID, runID, func(run *jobRunStruct) {
-		jobRunPub = run.export()
-	})
-	return jobRunPub, err
+	return c.jobRunRClb(jobRunsInnerMtx, runID, clb)
 }
 
 func (c *Cron) cancelRun(entryID EntryID, runID RunID) error {
