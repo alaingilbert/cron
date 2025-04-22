@@ -140,18 +140,18 @@ type ScheduleParser interface {
 	Parse(spec string) (Schedule, error)
 }
 
-type FuncIDFactory func() string
+type FuncIDFactory func() CronID
 
-func (f FuncIDFactory) Next() string { return f() }
+func (f FuncIDFactory) Next() CronID { return f() }
 
 type IDFactory interface {
-	Next() string
+	Next() CronID
 }
 
 // UuidIDFactory generate and format UUID V4
 func UuidIDFactory() IDFactory {
-	return FuncIDFactory(func() string {
-		return utils.UuidV4Str()
+	return FuncIDFactory(func() CronID {
+		return CronID(utils.UuidV4Str())
 	})
 }
 

@@ -11,7 +11,7 @@ import (
 )
 
 // RunID ...
-type RunID string
+type RunID CronID
 
 type JobRun struct {
 	RunID       RunID

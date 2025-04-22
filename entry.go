@@ -5,8 +5,11 @@ import (
 	"time"
 )
 
+// CronID is the type to use for all internal IDs (EntryID, RunID, HookID)
+type CronID string
+
 // EntryID ...
-type EntryID string
+type EntryID CronID
 
 // Entry consists of a schedule and the func to execute on that schedule.
 type Entry struct {

@@ -8,7 +8,7 @@ import (
 type HookFn func(context.Context, *Cron, HookID, JobRun)
 
 // HookID is a unique identifier for a cron job hook.
-type HookID string
+type HookID CronID
 
 func hookFunc(idFactory IDFactory, fn HookFn) *hookStruct {
 	return &hookStruct{
