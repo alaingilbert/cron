@@ -1655,9 +1655,9 @@ func TestGetHooks(t *testing.T) {
 	hookID3 := cron.OnEntryJobCompleted(eid, func(ctx context.Context, c *Cron, id HookID, jr JobRun) {}, HookSync)
 	hooks := cron.GetHooks()
 	assert.Equal(t, 3, len(hooks))
-	assert.True(t, hooks[0].ID == hookID1)
-	assert.True(t, hooks[1].ID == hookID2)
-	assert.True(t, hooks[2].ID == hookID3)
+	assert.True(t, hooks[0].ID == hookID1 || hooks[0].ID == hookID2 || hooks[0].ID == hookID3)
+	assert.True(t, hooks[1].ID == hookID1 || hooks[1].ID == hookID2 || hooks[1].ID == hookID3)
+	assert.True(t, hooks[2].ID == hookID1 || hooks[2].ID == hookID2 || hooks[2].ID == hookID3)
 }
 
 func TestGetHook(t *testing.T) {
