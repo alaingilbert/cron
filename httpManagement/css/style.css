@@ -125,3 +125,10 @@ small { color: #666; }
     max-height: 400px;
     overflow-y: auto;
 }
+.label {
+    max-width: 200px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    display: inline-block;
+}

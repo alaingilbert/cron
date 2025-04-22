@@ -22,7 +22,7 @@ Completed jobs ({{ len .CompletedJobRuns }})<br />
         <tr>
             <td><span class="monospace"><a href="/entries/{{ .Entry.ID }}">{{ .Entry.ID }}</a></span></td>
             <td><span class="monospace"><a href="/entries/{{ .Entry.ID }}/runs/{{ .RunID }}">{{ .RunID }}</a></span></td>
-            <td>{{ .Entry.Label }}</td>
+            <td><span class="label">{{ if .Entry.Label }}{{ .Entry.Label }}{{ else }}-{{ end }}</span></td>
             <td>{{ if .Entry.Spec }}{{ .Entry.Spec }}{{ else }}-{{ end }}</td>
             <td>{{ .StartedAt | FmtDate }} <small>({{ .StartedAt | ShortDur }})</small></td>
         </tr>

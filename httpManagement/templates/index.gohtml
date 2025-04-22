@@ -23,7 +23,7 @@ Running jobs ({{ len .JobRuns }})<br />
         <tr>
             <td><span class="monospace"><a href="/entries/{{ .Entry.ID }}">{{ .Entry.ID }}</a></span></td>
             <td><span class="monospace"><a href="/entries/{{ .Entry.ID }}/runs/{{ .RunID }}">{{ .RunID }}</a></span></td>
-            <td>{{ .Entry.Label }}</td>
+            <td><span class="label">{{ .Entry.Label }}</span></td>
             <td>{{ if .Entry.Spec }}{{ .Entry.Spec }}{{ else }}-{{ end }}</td>
             <td>{{ .StartedAt | FmtDate }} <small>({{ .StartedAt | ShortDur }})</small></td>
             <td>
@@ -62,7 +62,7 @@ Entries ({{ len .Entries }})<br />
     {{ range .Entries }}
         <tr>
             <td><span class="monospace"><a href="/entries/{{ .ID }}">{{ .ID }}</a></span></td>
-            <td>{{ if .Label }}{{ .Label }}{{ else }}-{{ end }}</td>
+            <td><span class="label">{{ if .Label }}{{ .Label }}{{ else }}-{{ end }}</span></td>
             <td>{{ if .Spec }}{{ .Spec }}{{ else }}-{{ end }}</td>
             <td>{{ .Prev | FmtDate }}</td>
             <td>{{ .Next | FmtDate }}{{ if not .Next.IsZero }} <small>({{ .Next | ShortDur }})</small>{{ end }}</td>
