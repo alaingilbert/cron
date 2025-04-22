@@ -32,6 +32,7 @@ import (
 	"github.com/alaingilbert/cron"
 	"github.com/alaingilbert/cron/httpManagement"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -190,6 +191,26 @@ func main() {
 	_, _ = c.AddJob("*/5 * * * * *", func(entry cron.Entry) {
 		fmt.Println(entry.Prev.UnixNano(), time.Now().UnixNano())
 	})
+
+	// A job can use the logger in JobRun to keep logs specific
+	// to this run which can be retrieved once completed.
+	_, _ = c.AddJob("*/5 * * * * *", func(ctx context.Context, jr cron.JobRun) error {
+		logger := jr.Logger()
+		logger.Debug("debug log")
+		logger.Info("info log")
+		logger.Warn("warn log")
+		logger.Error("error log")
+		for i := 0; i < 10; i++ {
+			logger.Info("info log", slog.Int("i", i))
+			select {
+			case <-time.After(time.Second):
+			case <-ctx.Done():
+				logger.Error(ctx.Err().Error())
+				return ctx.Err()
+			}
+		}
+		return nil
+	}, cron.Label("JobRun logger"), cron.WithID("logger-job"))
 
 	// Hooking
 	// By default hooks are running asynchronously.
