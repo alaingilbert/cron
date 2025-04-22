@@ -559,6 +559,17 @@ func (c *Cron) hookClb(id HookID, clb func(*hookStruct)) {
 	})
 }
 
+func (c *Cron) hookRClb(id HookID, clb func(hookMeta)) error {
+	err := c.hooks.RWithE(func(v hooksContainer) error {
+		if hook, ok := v.hooksMap[id]; ok {
+			clb(hook)
+			return nil
+		}
+		return ErrHookNotFound
+	})
+	return err
+}
+
 func (c *Cron) enableHook(id HookID) {
 	c.hookClb(id, func(hook *hookStruct) { (*hook).active = true })
 }
@@ -580,18 +591,11 @@ func (c *Cron) getHooks() (out []Hook) {
 	return
 }
 
-func (c *Cron) getHook(id HookID) (Hook, error) {
-	var out Hook
-	if err := c.hooks.RWithE(func(v hooksContainer) error {
-		if hook, ok := v.hooksMap[id]; ok {
-			out = hook.hook.export(hook.evt, hook.entryID)
-			return nil
-		}
-		return ErrHookNotFound
-	}); err != nil {
-		return Hook{}, err
-	}
-	return out, nil
+func (c *Cron) getHook(id HookID) (out Hook, err error) {
+	err = c.hookRClb(id, func(hook hookMeta) {
+		out = hook.hook.export(hook.evt, hook.entryID)
+	})
+	return out, err
 }
 
 func (c *Cron) onJobStart(clb HookFn, opts ...HookOption) HookID {
@@ -679,40 +683,45 @@ func (c *Cron) updateLabel(id EntryID, label string) {
 	})
 }
 
-func (c *Cron) setEntryActive(id EntryID, active bool) {
-	if err := c.entries.WithE(func(entries *entries) error {
-		entry, exists := entries.entriesMap[id]
-		if !exists || (*entry).Active == active {
-			return errors.New("not found or unchanged")
-		}
-		newNext := utils.TernaryOrZero(active, (*entry).Schedule.Next(c.now()))
-		(*entry).Active = active
-		(*entry).Next = newNext
-		_ = entries.heap.Update(id, newNext)
-		return nil
-	}); err != nil {
-		return
-	}
-	c.entriesUpdated() // setEntryActive
-}
-
-func (c *Cron) updateSchedule(id EntryID, spec *string, schedule Schedule) error {
-	if err := c.entries.WithE(func(entries *entries) error {
+func (c *Cron) modifyEntry(id EntryID, updateFunc func(entry *Entry) bool) error {
+	err := c.entries.WithE(func(entries *entries) error {
 		entry, exists := entries.entriesMap[id]
 		if !exists {
 			return ErrEntryNotFound
 		}
-		newNext := utils.TernaryOrZero((*entry).Active, schedule.Next(c.now()))
-		(*entry).Spec = spec
-		(*entry).Schedule = schedule
-		(*entry).Next = newNext
+		if !updateFunc(entry) {
+			return errors.New("not changed")
+		}
+		newNext := utils.TernaryOrZero(entry.Active, entry.Schedule.Next(c.now()))
+		entry.Next = newNext
 		_ = entries.heap.Update(id, newNext)
 		return nil
-	}); err != nil {
-		return err
+	})
+	if err == nil {
+		c.entriesUpdated()
 	}
-	c.entriesUpdated() // updateSchedule
-	return nil
+	return err
+}
+
+func (c *Cron) setEntryActive(id EntryID, active bool) {
+	_ = c.modifyEntry(id, func(entry *Entry) bool {
+		if entry.Active != active {
+			entry.Active = active
+			return true
+		}
+		return false
+	})
+}
+
+func (c *Cron) updateSchedule(id EntryID, spec *string, schedule Schedule) error {
+	return c.modifyEntry(id, func(entry *Entry) bool {
+		if entry.Spec != spec {
+			entry.Spec = spec
+			entry.Schedule = schedule
+			return true
+		}
+		return false
+	})
 }
 
 func (c *Cron) updateScheduleWithSpec(id EntryID, spec string) error {
