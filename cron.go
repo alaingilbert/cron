@@ -58,7 +58,7 @@ type hookMeta struct {
 	entryID *EntryID
 }
 
-func (c hooksContainer) iterHooks() iter.Seq[hookMeta] {
+func (c *hooksContainer) iterHooks() iter.Seq[hookMeta] {
 	return func(yield func(hookMeta) bool) {
 		for evt, hooks := range c.globalHooksMap {
 			for _, hook := range hooks {
@@ -77,6 +77,19 @@ func (c hooksContainer) iterHooks() iter.Seq[hookMeta] {
 			}
 		}
 	}
+}
+
+func (c *hooksContainer) addHook(evt JobEventType, hook *hookStruct) {
+	c.globalHooksMap[evt] = append(c.globalHooksMap[evt], hook)
+	c.hooksMap[hook.id] = hookMeta{hook, evt, nil}
+}
+
+func (c *hooksContainer) addEntryHook(entryID EntryID, evt JobEventType, hook *hookStruct) {
+	if c.entryHooksMap[entryID] == nil {
+		c.entryHooksMap[entryID] = make(map[JobEventType][]*hookStruct)
+	}
+	c.entryHooksMap[entryID][evt] = append(c.entryHooksMap[entryID][evt], hook)
+	c.hooksMap[hook.id] = hookMeta{hook, evt, &entryID}
 }
 
 type jobRunsInner struct {
@@ -473,8 +486,7 @@ func (c *Cron) onEvt(evt JobEventType, clb HookFn, opts ...HookOption) HookID {
 	hook := hookFunc(clb)
 	utils.ApplyOptions(hook, opts...)
 	c.hooks.With(func(v *hooksContainer) {
-		v.globalHooksMap[evt] = append(v.globalHooksMap[evt], hook)
-		v.hooksMap[hook.id] = hookMeta{hook, evt, nil}
+		v.addHook(evt, hook)
 	})
 	return hook.id
 }
@@ -483,11 +495,7 @@ func (c *Cron) onEntryEvt(entryID EntryID, evt JobEventType, clb HookFn, opts ..
 	hook := hookFunc(clb)
 	utils.ApplyOptions(hook, opts...)
 	c.hooks.With(func(v *hooksContainer) {
-		if v.entryHooksMap[entryID] == nil {
-			v.entryHooksMap[entryID] = make(map[JobEventType][]*hookStruct)
-		}
-		v.entryHooksMap[entryID][evt] = append(v.entryHooksMap[entryID][evt], hook)
-		v.hooksMap[hook.id] = hookMeta{hook, evt, &entryID}
+		v.addEntryHook(entryID, evt, hook)
 	})
 	return hook.id
 }
