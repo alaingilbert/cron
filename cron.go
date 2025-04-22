@@ -38,7 +38,7 @@ type Cron struct {
 	logger               *slog.Logger                                 // Logger for scheduler events, errors, and diagnostics
 	parser               ScheduleParser                               // Parses cron expressions into schedule objects
 	idFactory            EntryIDFactory                               // Generates a new unique EntryID for each scheduled job
-	jobRunLoggerFactory  JobRunLoggerFactory                          //
+	jobRunLoggerFactory  JobRunLoggerFactory                          // Factory for creating loggers for individual job runs
 	ps                   *pubsub.PubSub[EntryID, JobEvent]            // PubSub for publishing and subscribing to job events
 	jobRunCreatedCh      chan JobRun                                  // Channel for receiving notifications when new job runs are created
 	jobRunCompletedCh    chan JobRun                                  // Channel for receiving notifications when job runs complete
