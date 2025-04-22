@@ -40,19 +40,23 @@ func getMenu(c *cron.Cron) string {
 <a href="/">home</a> |
 <a href="/completed">completed</a>
 <hr />
-Current time: ` + time.Now().Format(time.DateTime) + `<br />
-Last cleanup: 
-`
+<table>
+	<tr>
+		<td>Current time:</td><td><span class="monospace">` + time.Now().Format(time.DateTime) + `</span></td>
+	</tr>
+	<tr>
+		<td>Last cleanup:</td>
+		<td>`
 	if c.GetCleanupTS().IsZero() {
 		out += `-`
 	} else {
-		out += c.GetCleanupTS().Format(time.DateTime) + ` <small>(` + utils.ShortDur(c.GetCleanupTS()) + `)</small>`
+		out += `<span class="monospace">` + c.GetCleanupTS().Format(time.DateTime) + `</span> <small>(` + utils.ShortDur(c.GetCleanupTS()) + `)</small>`
 	}
 	out += `
-<form method="POST" action="/cleanup-now/" class="d-inline-block">
-	<input type="submit" value="cleanup now" />
-</form>
-<br />
+			<form method="POST" action="/cleanup-now/" class="d-inline-block"><input type="submit" value="cleanup now" /></form>
+		</td>
+	</tr>
+</table>
 <hr />`
 	return out
 }
