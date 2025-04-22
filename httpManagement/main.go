@@ -18,6 +18,7 @@ func GetMux(c *cron.Cron) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("GET  /{$}", indexHandler(c))
 	mux.Handle("POST /{$}", indexHandler(c))
+	mux.Handle("POST /cleanup-now/{$}", cleanupNowHandler(c))
 	mux.Handle("GET  /completed/{$}", completedHandler(c))
 	mux.Handle("GET  /entries/{entryID}/{$}", entryHandler(c))
 	mux.Handle("POST /entries/{entryID}/{$}", entryHandler(c))
@@ -47,6 +48,10 @@ Last cleanup:
 		out += c.GetCleanupTS().Format(time.DateTime) + ` <small>(` + utils.ShortDur(c.GetCleanupTS()) + `)</small>`
 	}
 	out += `
+<form method="POST" action="/cleanup-now/" class="d-inline-block">
+	<input type="submit" value="cleanup now" />
+</form>
+<br />
 <hr />`
 	return out
 }
@@ -169,6 +174,13 @@ func indexHandler(c *cron.Cron) http.Handler {
 			Menu:    template.HTML(getMenu(c)),
 		}
 		return render(http.StatusOK, "templates/index.gohtml", data, w)
+	})
+}
+
+func cleanupNowHandler(c *cron.Cron) http.Handler {
+	return M(func(w http.ResponseWriter, r *http.Request) error {
+		c.CleanupNow()
+		return redirectTo(w, r.Referer())
 	})
 }
 
