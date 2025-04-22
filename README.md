@@ -30,7 +30,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/alaingilbert/cron"
-	"github.com/alaingilbert/cron/httpManagement"
+	"github.com/alaingilbert/cron/webadmin"
 	"log"
 	"log/slog"
 	"net/http"
@@ -232,7 +232,7 @@ func main() {
 	c.Start()
 
 	// This library comes with a complete web interface administration tool (optional)
-	mux := httpManagement.GetMux(c)
+	mux := webadmin.GetMux(c)
 	if err := http.ListenAndServe(":8080", mux); err != nil {
 		log.Fatal(err)
 	}

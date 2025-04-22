@@ -1,4 +1,4 @@
-package httpManagement
+package webadmin
 
 import (
 	"bytes"
