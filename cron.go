@@ -81,7 +81,7 @@ func (c *hooksContainer) iterHooks() iter.Seq[hookMeta] {
 
 func (c *hooksContainer) addHook(evt JobEventType, hook *hookStruct) {
 	c.globalHooksMap[evt] = append(c.globalHooksMap[evt], hook)
-	c.hooksMap[hook.id] = hookMeta{hook, evt, nil}
+	c.addMetaLookup(hook, evt, nil)
 }
 
 func (c *hooksContainer) addEntryHook(entryID EntryID, evt JobEventType, hook *hookStruct) {
@@ -89,7 +89,11 @@ func (c *hooksContainer) addEntryHook(entryID EntryID, evt JobEventType, hook *h
 		c.entryHooksMap[entryID] = make(map[JobEventType][]*hookStruct)
 	}
 	c.entryHooksMap[entryID][evt] = append(c.entryHooksMap[entryID][evt], hook)
-	c.hooksMap[hook.id] = hookMeta{hook, evt, &entryID}
+	c.addMetaLookup(hook, evt, &entryID)
+}
+
+func (c *hooksContainer) addMetaLookup(hook *hookStruct, evt JobEventType, entryID *EntryID) {
+	c.hooksMap[hook.id] = hookMeta{hook, evt, entryID}
 }
 
 type jobRunsInner struct {
