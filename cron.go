@@ -256,7 +256,7 @@ func (c *Cron) AddJob(spec string, job IntoJob, opts ...EntryOption) (EntryID, e
 	return c.addJob(spec, job, opts...)
 }
 
-// AddJobStrict adds a Job to the Cron to be run on the given schedule.
+// AddJobStrict same as AddJob, but only accept a Job interface instead of IntoJob (any)
 func (c *Cron) AddJobStrict(spec string, job Job, opts ...EntryOption) (EntryID, error) {
 	return c.addJobStrict(spec, job, opts...)
 }
