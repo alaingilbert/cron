@@ -364,6 +364,9 @@ func (c *Cron) GetCleanupTS() time.Time { return c.lastCleanupTS.Get() }
 // CleanupNow triggers immediate cleanup of completed job runs
 func (c *Cron) CleanupNow() { c.cleanupNow() }
 
+// SetCleanupInterval sets the duration for keeping completed job runs before cleanup
+func (c *Cron) SetCleanupInterval(dur time.Duration) { c.setCleanupInterval(dur) }
+
 //-----------------------------------------------------------------------------
 
 func startCleanupThread(c *Cron) {
@@ -371,6 +374,9 @@ func startCleanupThread(c *Cron) {
 		defer c.logger.Info("cleanup thread stopped")
 		for {
 			keepCompletedRunsDur := c.keepCompletedRunsDur.Get()
+			if keepCompletedRunsDur == 0 {
+				return
+			}
 			select {
 			case <-c.clock.After(keepCompletedRunsDur):
 			case <-c.cleanupNowCh:
@@ -407,6 +413,14 @@ func startCleanupThread(c *Cron) {
 
 func (c *Cron) cleanupNow() {
 	utils.NonBlockingSend(c.cleanupNowCh, struct{}{})
+}
+
+func (c *Cron) setCleanupInterval(dur time.Duration) {
+	oldDur := c.keepCompletedRunsDur.Swap(dur)
+	if oldDur == 0 {
+		startCleanupThread(c)
+	}
+	c.cleanupNow()
 }
 
 func (c *Cron) start() (started bool) {
