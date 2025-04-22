@@ -12,8 +12,11 @@ import (
 	"time"
 )
 
-//go:embed templates/* css/*
+//go:embed templates/*
 var fs embed.FS
+
+//go:embed css/style.css
+var style string
 
 func GetMux(c *cron.Cron) *http.ServeMux {
 	mux := http.NewServeMux()
@@ -28,11 +31,6 @@ func GetMux(c *cron.Cron) *http.ServeMux {
 	mux.Handle("GET  /hooks/{hookID}/{$}", hookHandler(c))
 	mux.Handle("POST /hooks/{hookID}/{$}", hookHandler(c))
 	return mux
-}
-
-func getCss() string {
-	style, _ := fs.ReadFile("css/style.css")
-	return string(style)
 }
 
 var funcsMap = template.FuncMap{
@@ -158,7 +156,7 @@ func indexHandler(c *cron.Cron) http.Handler {
 			JobRuns:   jobRuns,
 			Entries:   entries,
 			Hooks:     hooks,
-			Css:       template.CSS(getCss()),
+			Css:       template.CSS(style),
 			Now:       time.Now(),
 			CleanupTS: c.GetCleanupTS(),
 		}
@@ -179,7 +177,7 @@ func completedHandler(c *cron.Cron) http.Handler {
 		slices.Reverse(completedJobRuns)
 		data := completedData{
 			CompletedJobRuns: completedJobRuns,
-			Css:              template.CSS(getCss()),
+			Css:              template.CSS(style),
 			Now:              time.Now(),
 			CleanupTS:        c.GetCleanupTS(),
 		}
@@ -220,7 +218,7 @@ func entryHandler(c *cron.Cron) http.Handler {
 			Entry:            entry,
 			JobRuns:          jobRuns,
 			CompletedJobRuns: completedJobRuns,
-			Css:              template.CSS(getCss()),
+			Css:              template.CSS(style),
 			Now:              time.Now(),
 			CleanupTS:        c.GetCleanupTS(),
 		}
@@ -247,7 +245,7 @@ func runHandler(c *cron.Cron) http.Handler {
 		data := runData{
 			JobRun:    jobRun,
 			Entry:     entry,
-			Css:       template.CSS(getCss()),
+			Css:       template.CSS(style),
 			Now:       time.Now(),
 			CleanupTS: c.GetCleanupTS(),
 		}
@@ -278,7 +276,7 @@ func hookHandler(c *cron.Cron) http.Handler {
 		}
 		data := hookData{
 			Hook:      hook,
-			Css:       template.CSS(getCss()),
+			Css:       template.CSS(style),
 			Now:       time.Now(),
 			CleanupTS: c.GetCleanupTS(),
 		}
