@@ -93,10 +93,8 @@ func render(code int, name string, data any, w http.ResponseWriter) error {
 	}
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(code)
-	if _, err := w.Write(b.Bytes()); err != nil {
-		return err
-	}
-	return nil
+	_, err := w.Write(b.Bytes())
+	return err
 }
 
 type M func(w http.ResponseWriter, r *http.Request) error
