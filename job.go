@@ -551,12 +551,12 @@ func N(n int, j IntoJob) Job {
 }
 
 type ThresholdCallback func(ctx context.Context, c *Cron, r JobRun, threshold, dur time.Duration, err error)
-type ThresholdCallback2 func(ctx context.Context, c *Cron, r JobRun, threshold time.Duration)
+type ThresholdCallbackAsync func(ctx context.Context, c *Cron, r JobRun, threshold time.Duration)
 
-// ThresholdClb2Wrapper wraps a job and starts a timer for the given threshold.
+// ThresholdClbAsyncWrapper wraps a job and starts a timer for the given threshold.
 // If the job runs longer than the threshold, the callback is triggered.
 // The callback is invoked asynchronously and does not block job execution.
-func ThresholdClb2Wrapper(threshold time.Duration, clb ThresholdCallback2) JobWrapper {
+func ThresholdClbAsyncWrapper(threshold time.Duration, clb ThresholdCallbackAsync) JobWrapper {
 	return func(job IntoJob) Job {
 		return FuncJob(func(ctx context.Context, c *Cron, r JobRun) error {
 			go func() {
@@ -575,9 +575,9 @@ func ThresholdClb2Wrapper(threshold time.Duration, clb ThresholdCallback2) JobWr
 	}
 }
 
-// ThresholdClb2 ...
-func ThresholdClb2(threshold time.Duration, j IntoJob, clb ThresholdCallback2) Job {
-	return ThresholdClb2Wrapper(threshold, clb)(j)
+// ThresholdClbAsync ...
+func ThresholdClbAsync(threshold time.Duration, j IntoJob, clb ThresholdCallbackAsync) Job {
+	return ThresholdClbAsyncWrapper(threshold, clb)(j)
 }
 
 func ThresholdClbWrapper(threshold time.Duration, clb ThresholdCallback) JobWrapper {

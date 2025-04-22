@@ -15,11 +15,15 @@ Comes with a complete admin web interface built-in
 
 Built in job wrapper:  
 ```go
+func Once(job IntoJob) Job
+func N(n int, j IntoJob) Job
 func WithRetry(maxRetry int, job IntoJob) Job
 func WithTimeout(time.Duration, IntoJob) Job
 func WithDeadline(time.Time, IntoJob) Job
 func WithJitter(time.Duration, IntoJob) Job
 func SkipIfStillRunning(IntoJob) Job
+func ThresholdClb(threshold time.Duration, j IntoJob, clb ThresholdCallback) Job
+func ThresholdClbAsync(threshold time.Duration, j IntoJob, clb ThresholdCallbackAsync) Job
 ```
 
 ```go
