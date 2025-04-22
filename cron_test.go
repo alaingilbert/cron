@@ -1100,6 +1100,13 @@ func TestWithContext(t *testing.T) {
 	assert.True(t, true)
 }
 
+func TestWithIDFactory(t *testing.T) {
+	factory := FuncEntryIDFactory(func() EntryID { return "test" })
+	cron := New(WithLogger(newErrLogger()), WithIDFactory(factory))
+	id, _ := cron.AddJob("* * * * *", func() {})
+	assert.Equal(t, EntryID("test"), id)
+}
+
 func TestAddEntry(t *testing.T) {
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
