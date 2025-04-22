@@ -9,12 +9,14 @@
 Running jobs ({{ len .JobRuns }})<br />
 <table>
     <thead>
-    <th>Entry ID</th>
-    <th>Run ID</th>
-    <th>Label</th>
-    <th>Spec</th>
-    <th>Started at</th>
-    <th>Actions</th>
+    <tr>
+        <th>Entry ID</th>
+        <th>Run ID</th>
+        <th>Label</th>
+        <th>Spec</th>
+        <th>Started at</th>
+        <th>Actions</th>
+    </tr>
     </thead>
     <tbody>
     {{ range .JobRuns }}

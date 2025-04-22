@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <title></title>
+    <style>{{ .Css }}</style>
+</head>
+<body>
+{{ .Menu }}
+Completed jobs ({{ len .CompletedJobRuns }})<br />
+<table>
+    <thead>
+        <tr>
+            <th>Entry ID</th>
+            <th>Run ID</th>
+            <th>Label</th>
+            <th>Spec</th>
+            <th>Started at</th>
+        </tr>
+    </thead>
+    <tbody>
+    {{ range .CompletedJobRuns }}
+        <tr>
+            <td><span class="monospace"><a href="/entries/{{ .Entry.ID }}">{{ .Entry.ID }}</a></span></td>
+            <td><span class="monospace"><a href="/entries/{{ .Entry.ID }}/runs/{{ .RunID }}">{{ .RunID }}</a></span></td>
+            <td>{{ .Entry.Label }}</td>
+            <td>{{ if .Entry.Spec }}{{ .Entry.Spec }}{{ else }}-{{ end }}</td>
+            <td>{{ .StartedAt | FmtDate }} <small>({{ .StartedAt | ShortDur }})</small></td>
+        </tr>
+    {{ else }}
+        <tr><td colspan="5"><em>No completed jobs</em></td></tr>
+    {{ end }}
+    </tbody>
+</table>
+</body>
+</html>

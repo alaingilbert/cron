@@ -18,6 +18,7 @@ func GetMux(c *cron.Cron) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("GET  /{$}", indexHandler(c))
 	mux.Handle("POST /{$}", indexHandler(c))
+	mux.Handle("GET  /completed/{$}", completedHandler(c))
 	mux.Handle("GET  /entries/{entryID}/{$}", entryHandler(c))
 	mux.Handle("POST /entries/{entryID}/{$}", entryHandler(c))
 	mux.Handle("GET  /entries/{entryID}/runs/{runID}/{$}", runHandler(c))
@@ -34,7 +35,8 @@ func getCss() string {
 
 func getMenu(c *cron.Cron) string {
 	out := `
-<a href="/">home</a>
+<a href="/">home</a> |
+<a href="/completed">completed</a>
 <hr />
 Current time: ` + time.Now().Format(time.DateTime) + `<br />
 Last cleanup: 
@@ -95,6 +97,12 @@ type indexData struct {
 	JobRuns []cron.JobRun
 	Entries []cron.Entry
 	Hooks   []cron.Hook
+}
+
+type completedData struct {
+	Css              template.CSS
+	Menu             template.HTML
+	CompletedJobRuns []cron.JobRun
 }
 
 type entryData struct {
@@ -161,6 +169,19 @@ func indexHandler(c *cron.Cron) http.Handler {
 			Menu:    template.HTML(getMenu(c)),
 		}
 		return render(http.StatusOK, "templates/index.gohtml", data, w)
+	})
+}
+
+func completedHandler(c *cron.Cron) http.Handler {
+	return M(func(w http.ResponseWriter, r *http.Request) error {
+		completedJobRuns := c.CompletedJobs()
+		slices.Reverse(completedJobRuns)
+		data := completedData{
+			CompletedJobRuns: completedJobRuns,
+			Css:              template.CSS(getCss()),
+			Menu:             template.HTML(getMenu(c)),
+		}
+		return render(http.StatusOK, "templates/completed.gohtml", data, w)
 	})
 }
 
