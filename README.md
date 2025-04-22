@@ -199,7 +199,7 @@ func main() {
 
 	// A job can use the logger in JobRun to keep logs specific
 	// to this run which can be retrieved once completed.
-	_, _ = c.AddJob("*/5 * * * * *", func(ctx context.Context, jr cron.JobRun) error {
+	useLoggerID, _ := c.AddJob("*/5 * * * * *", func(ctx context.Context, jr cron.JobRun) error {
 		logger := jr.Logger()
 		logger.Debug("debug log")
 		logger.Info("info log")
@@ -228,6 +228,9 @@ func main() {
 	c.OnEntryJobStart(customJobIDEntryID, func(ctx context.Context, c *cron.Cron, id cron.HookID, run cron.JobRun) {
 		fmt.Println("job started", run.Entry.ID, run.RunID)
 	})
+	c.OnEntryJobCompleted(useLoggerID, func(ctx context.Context, c *cron.Cron, id cron.HookID, run cron.JobRun) {
+		fmt.Println("get back job logs", run.Logs)
+	}, cron.HookLabel("logger job completed hook"))
 	// You can make hook for all JobEventType (JobStart, JobCompleted, JobErr, JobPanic)
 	// using OnEvt / OnEntryEvt
 	c.OnEvt(cron.JobPanic, func(ctx context.Context, c *cron.Cron, id cron.HookID, run cron.JobRun) {
