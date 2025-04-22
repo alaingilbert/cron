@@ -1012,9 +1012,9 @@ func makeEventErr(c *Cron, entry Entry, jobRun *jobRunStruct, typ JobEventType, 
 	var opt func(*jobRunInner)
 	switch typ {
 	case JobStart:
-		opt = func(inner *jobRunInner) { (*inner).startedAt = utils.Ptr(now) }
+		opt = func(inner *jobRunInner) { (*inner).startedAt = &now }
 	case JobCompleted:
-		opt = func(inner *jobRunInner) { (*inner).completedAt = utils.Ptr(now) }
+		opt = func(inner *jobRunInner) { (*inner).completedAt = &now }
 	case JobPanic:
 		opt = func(inner *jobRunInner) { (*inner).panic = true }
 	case JobErr:
