@@ -16,6 +16,7 @@ type Config struct {
 	Logger               *slog.Logger
 	Parser               ScheduleParser
 	IDFactory            EntryIDFactory
+	JobRunLoggerFactory  JobRunLoggerFactory
 	KeepCompletedRunsDur *time.Duration
 }
 
@@ -33,6 +34,13 @@ func WithLocation(loc *time.Location) Option {
 func WithKeepCompletedRunsDur(keepCompletedRunsDur time.Duration) Option {
 	return func(c *Config) {
 		c.KeepCompletedRunsDur = &keepCompletedRunsDur
+	}
+}
+
+// WithJobRunLoggerFactory ...
+func WithJobRunLoggerFactory(factory JobRunLoggerFactory) Option {
+	return func(c *Config) {
+		c.JobRunLoggerFactory = factory
 	}
 }
 

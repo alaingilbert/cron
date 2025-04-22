@@ -61,7 +61,7 @@ var jobRunPool = sync.Pool{
 	},
 }
 
-func acquireJobRun(ctx context.Context, clock clockwork.Clock, entry Entry) *jobRunStruct {
+func acquireJobRun(ctx context.Context, clock clockwork.Clock, entry Entry, loggerFactory JobRunLoggerFactory) *jobRunStruct {
 	jr := jobRunPool.Get().(*jobRunStruct)
 	jr.ctx, jr.cancel = context.WithCancel(ctx)
 	jr.clock = clock
@@ -69,7 +69,7 @@ func acquireJobRun(ctx context.Context, clock clockwork.Clock, entry Entry) *job
 	jr.runID = RunID(utils.UuidV4Str())
 	jr.createdAt = clock.Now()
 	jr.logsBuf = bytes.Buffer{}
-	jr.logger = slog.New(slog.NewTextHandler(&jr.logsBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	jr.logger = loggerFactory.New(&jr.logsBuf)
 	jr.inner.With(func(inner *jobRunInner) {
 		inner.events = inner.events[:0] // Reset slice
 		inner.startedAt = nil

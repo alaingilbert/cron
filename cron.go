@@ -3,6 +3,7 @@ package cron
 import (
 	"context"
 	"errors"
+	"io"
 	"iter"
 	"log/slog"
 	"runtime"
@@ -37,6 +38,7 @@ type Cron struct {
 	logger               *slog.Logger                                 // Logger for scheduler events, errors, and diagnostics
 	parser               ScheduleParser                               // Parses cron expressions into schedule objects
 	idFactory            EntryIDFactory                               // Generates a new unique EntryID for each scheduled job
+	jobRunLoggerFactory  JobRunLoggerFactory                          //
 	ps                   *pubsub.PubSub[EntryID, JobEvent]            // PubSub for publishing and subscribing to job events
 	jobRunCreatedCh      chan JobRun                                  // Channel for receiving notifications when new job runs are created
 	jobRunCompletedCh    chan JobRun                                  // Channel for receiving notifications when job runs complete
@@ -153,6 +155,20 @@ func UUIDEntryIDFactory() EntryIDFactory {
 	})
 }
 
+type JobRunLoggerFactory interface {
+	New(w io.Writer) *slog.Logger
+}
+
+type FuncJobRunLoggerFactory func(w io.Writer) *slog.Logger
+
+func (f FuncJobRunLoggerFactory) New(w io.Writer) *slog.Logger { return f(w) }
+
+func DefaultJobRunLoggerFactory() JobRunLoggerFactory {
+	return FuncJobRunLoggerFactory(func(w io.Writer) *slog.Logger {
+		return slog.New(slog.NewTextHandler(w, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	})
+}
+
 //-----------------------------------------------------------------------------
 
 // New returns a new Cron job runner
@@ -164,6 +180,7 @@ func New(opts ...Option) *Cron {
 	logger := utils.Or(cfg.Logger, slog.Default())
 	parser := utils.Or(cfg.Parser, ScheduleParser(standardParser))
 	idFactory := utils.Or(cfg.IDFactory, UUIDEntryIDFactory())
+	jobRunLoggerFactory := utils.Or(cfg.JobRunLoggerFactory, DefaultJobRunLoggerFactory())
 	keepCompletedRunsDur := utils.Default(cfg.KeepCompletedRunsDur, time.Minute)
 	ctx, cancel := context.WithCancel(parentCtx)
 	c := &Cron{
@@ -177,6 +194,7 @@ func New(opts ...Option) *Cron {
 		logger:               logger,
 		parser:               parser,
 		idFactory:            idFactory,
+		jobRunLoggerFactory:  jobRunLoggerFactory,
 		ps:                   pubsub.NewPubSub[EntryID, JobEvent](),
 		jobRunCreatedCh:      make(chan JobRun),
 		jobRunCompletedCh:    make(chan JobRun),
@@ -966,7 +984,7 @@ func freeJobRun(v *jobRunsInner, jobRun *jobRunStruct) {
 
 // startJob runs the given job in a new goroutine.
 func (c *Cron) startJob(entry Entry) {
-	jobRun := acquireJobRun(c.ctx, c.clock, entry)
+	jobRun := acquireJobRun(c.ctx, c.clock, entry, c.jobRunLoggerFactory)
 	c.runningJobsCount.Add(1)
 	go func() {
 		defer func() {
