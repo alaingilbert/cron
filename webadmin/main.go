@@ -75,22 +75,17 @@ func redirectTo(w http.ResponseWriter, l string) error {
 }
 
 func render(code int, name string, data any, w http.ResponseWriter) error {
-	baseTmplHtml, err := fs.ReadFile("templates/base.gohtml")
-	if err != nil {
-		return err
-	}
-	tmplHtml, err := fs.ReadFile(name)
-	if err != nil {
-		return err
-	}
+	files := []string{"templates/base.gohtml", name}
 	tmpl := template.New("").Funcs(funcsMap)
-	tmpl, err = tmpl.Parse(string(baseTmplHtml))
-	if err != nil {
-		return err
-	}
-	tmpl, err = tmpl.Parse(string(tmplHtml))
-	if err != nil {
-		return err
+	for _, fileName := range files {
+		fileContent, err := fs.ReadFile(fileName)
+		if err != nil {
+			return err
+		}
+		tmpl, err = tmpl.Parse(string(fileContent))
+		if err != nil {
+			return err
+		}
 	}
 	var b bytes.Buffer
 	if err := tmpl.ExecuteTemplate(&b, "base", data); err != nil {
