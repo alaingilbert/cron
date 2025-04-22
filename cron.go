@@ -551,28 +551,24 @@ func (c *Cron) removeHook(id HookID) {
 	})
 }
 
-func (c *Cron) enableHook(id HookID) {
+func (c *Cron) hookClb(id HookID, clb func(*hookStruct)) {
 	c.hooks.With(func(v *hooksContainer) {
 		if hook, ok := v.hooksMap[id]; ok {
-			(*hook.hook).active = true
+			clb(hook.hook)
 		}
 	})
+}
+
+func (c *Cron) enableHook(id HookID) {
+	c.hookClb(id, func(hook *hookStruct) { (*hook).active = true })
 }
 
 func (c *Cron) disableHook(id HookID) {
-	c.hooks.With(func(v *hooksContainer) {
-		if hook, ok := v.hooksMap[id]; ok {
-			(*hook.hook).active = false
-		}
-	})
+	c.hookClb(id, func(hook *hookStruct) { (*hook).active = false })
 }
 
 func (c *Cron) setHookLabel(id HookID, label string) {
-	c.hooks.With(func(v *hooksContainer) {
-		if hook, ok := v.hooksMap[id]; ok {
-			(*hook.hook).label = label
-		}
-	})
+	c.hookClb(id, func(hook *hookStruct) { (*hook).label = label })
 }
 
 func (c *Cron) getHooks() (out []Hook) {
