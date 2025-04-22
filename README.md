@@ -22,7 +22,7 @@ func WithTimeout(time.Duration, IntoJob) Job
 func WithDeadline(time.Time, IntoJob) Job
 func WithJitter(time.Duration, IntoJob) Job
 func SkipIfStillRunning(IntoJob) Job
-func DelayIfStillRunning(j IntoJob) Job
+func DelayIfStillRunning(IntoJob) Job
 func ThresholdClb(threshold time.Duration, j IntoJob, clb ThresholdCallback) Job
 func ThresholdClbAsync(threshold time.Duration, j IntoJob, clb ThresholdCallbackAsync) Job
 ```
