@@ -1101,7 +1101,7 @@ func TestWithContext(t *testing.T) {
 }
 
 func TestWithIDFactory(t *testing.T) {
-	factory := FuncEntryIDFactory(func() EntryID { return "test" })
+	factory := FuncIDFactory(func() ID { return "test" })
 	cron := New(WithLogger(newErrLogger()), WithIDFactory(factory))
 	id, _ := cron.AddJob("* * * * *", func() {})
 	assert.Equal(t, EntryID("test"), id)

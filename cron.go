@@ -140,21 +140,21 @@ type ScheduleParser interface {
 	Parse(spec string) (Schedule, error)
 }
 
-// CronID is the type to use for all internal IDs (EntryID, RunID, HookID)
-type CronID string
+// ID is the type to use for all internal IDs (EntryID, RunID, HookID)
+type ID string
 
-type FuncIDFactory func() CronID
+type FuncIDFactory func() ID
 
-func (f FuncIDFactory) Next() CronID { return f() }
+func (f FuncIDFactory) Next() ID { return f() }
 
 type IDFactory interface {
-	Next() CronID
+	Next() ID
 }
 
 // UuidIDFactory generate and format UUID V4
 func UuidIDFactory() IDFactory {
-	return FuncIDFactory(func() CronID {
-		return CronID(utils.UuidV4Str())
+	return FuncIDFactory(func() ID {
+		return ID(utils.UuidV4Str())
 	})
 }
 

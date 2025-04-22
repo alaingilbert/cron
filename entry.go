@@ -6,7 +6,7 @@ import (
 )
 
 // EntryID ...
-type EntryID CronID
+type EntryID ID
 
 // Entry consists of a schedule and the func to execute on that schedule.
 type Entry struct {
