@@ -1626,8 +1626,7 @@ func TestEnableHook(t *testing.T) {
 	var calls atomic.Int32
 	hookID := cron.OnJobStart(func(ctx context.Context, c *Cron, id HookID, jr JobRun) {
 		calls.Add(1)
-	}, HookSync)
-	cron.DisableHook(hookID)
+	}, HookSync, HookDisable)
 	cron.Start()
 	_, _ = cron.AddJob("* * * * * *", func() {})
 	advanceAndCycle(cron, time.Second)
@@ -1681,9 +1680,12 @@ func TestGetHook(t *testing.T) {
 func TestSetHookLabel(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
 	cron := New(WithClock(clock), WithLogger(newNoOpLogger()))
-	hookID := cron.OnJobStart(func(ctx context.Context, c *Cron, id HookID, jr JobRun) {}, HookSync)
-	cron.SetHookLabel(hookID, "test-label")
+	hookID := cron.OnJobStart(func(ctx context.Context, c *Cron, id HookID, jr JobRun) {}, HookSync, HookLabel("label"))
 	hook, err := cron.GetHook(hookID)
+	assert.NoError(t, err)
+	assert.Equal(t, "label", hook.Label)
+	cron.SetHookLabel(hookID, "test-label")
+	hook, err = cron.GetHook(hookID)
 	assert.NoError(t, err)
 	assert.Equal(t, "test-label", hook.Label)
 }
