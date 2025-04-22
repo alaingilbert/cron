@@ -985,6 +985,7 @@ func (c *Cron) runWithRecovery(jobRun *jobRunStruct) {
 	clock := c.clock
 	logger := c.logger
 	start := clock.Now()
+
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Error("job panic", "label", entry.Label, "entryID", entry.ID, "runID", runID, "error", r, "stack", string(debug.Stack()))

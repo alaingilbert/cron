@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 )
 
@@ -59,6 +60,8 @@ Last cleanup:
 var funcsMap = template.FuncMap{
 	"FmtDate":  func(t time.Time) string { return t.Format(time.DateTime) },
 	"ShortDur": func(t time.Time) string { return utils.ShortDur(t) },
+	"Nl2br":    func(v string) string { return strings.ReplaceAll(v, "\n", "<br />") },
+	"Safe":     func(v string) template.HTML { return template.HTML(v) },
 }
 
 func redirectTo(w http.ResponseWriter, l string) error {

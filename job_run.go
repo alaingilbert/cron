@@ -1,10 +1,12 @@
 package cron
 
 import (
+	"bytes"
 	"context"
 	"github.com/alaingilbert/cron/internal/mtx"
 	"github.com/alaingilbert/cron/internal/utils"
 	"github.com/jonboulle/clockwork"
+	"log/slog"
 	"sync"
 	"time"
 )
@@ -21,6 +23,12 @@ type JobRun struct {
 	Events      []JobEvent
 	Error       error
 	Panic       bool
+	Logs        string
+	logger      *slog.Logger
+}
+
+func (j JobRun) Logger() *slog.Logger {
+	return j.logger
 }
 
 type jobRunStruct struct {
@@ -31,6 +39,8 @@ type jobRunStruct struct {
 	createdAt time.Time
 	ctx       context.Context
 	cancel    context.CancelFunc
+	logsBuf   bytes.Buffer
+	logger    *slog.Logger
 }
 
 type jobRunInner struct {
@@ -58,6 +68,7 @@ func acquireJobRun(ctx context.Context, clock clockwork.Clock, entry Entry) *job
 	jr.entry = entry
 	jr.runID = RunID(utils.UuidV4Str())
 	jr.createdAt = clock.Now()
+	jr.logger = slog.New(slog.NewTextHandler(&jr.logsBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	jr.inner.With(func(inner *jobRunInner) {
 		inner.events = inner.events[:0] // Reset slice
 		inner.startedAt = nil
@@ -70,6 +81,8 @@ func acquireJobRun(ctx context.Context, clock clockwork.Clock, entry Entry) *job
 
 func releaseJobRun(jr *jobRunStruct) {
 	jr.cancel() // Ensure context is cleaned up
+	jr.logsBuf = bytes.Buffer{}
+	jr.logger = nil
 	jobRunPool.Put(jr)
 }
 
@@ -83,6 +96,8 @@ func (j *jobRunStruct) export() JobRun {
 		RunID:       j.runID,
 		Entry:       j.entry,
 		CreatedAt:   j.createdAt,
+		Logs:        j.logsBuf.String(),
+		logger:      j.logger,
 		Events:      innerCopy.events,
 		StartedAt:   innerCopy.startedAt,
 		CompletedAt: innerCopy.completedAt,

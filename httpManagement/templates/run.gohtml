@@ -13,6 +13,14 @@
     <tr><td>Error:</td><td>{{ if .JobRun.Error }}<span class="danger">{{ .JobRun.Error.Error }}</span>{{ else }}<span>-</span>{{ end }}</td></tr>
 </table>
 <div class="mb-1">
+    Logs: {{ if not .JobRun.Logs }}-{{ end }}<br />
+    {{ if .JobRun.Logs }}
+        <div class="logs">
+            {{ .JobRun.Logs | Nl2br | Safe }}
+        </div>
+    {{ end }}
+</div>
+<div class="mb-1">
     <form method="POST">
         <input type="hidden" name="formName" value="cancelRun" />
         <input type="hidden" name="entryID" value="{{ .JobRun.Entry.ID }}" />

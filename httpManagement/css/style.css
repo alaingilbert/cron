@@ -113,3 +113,15 @@ a {
 .mb-1 { margin-bottom: 10px; }
 small { color: #666; }
 .text-center { text-align: center; }
+.logs {
+    font-family: monospace;
+    border: 1px solid #666;
+    border-radius: 5px;
+    padding: 5px;
+    background-color: #333;
+    color: #999;
+    font-size: 12px;
+    line-height: normal;
+    max-height: 400px;
+    overflow-y: auto;
+}
