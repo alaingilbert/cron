@@ -51,7 +51,6 @@ Running jobs ({{ len .JobRuns }})<br />
     <thead>
     <tr>
         <th>Run ID</th>
-        <th>Label</th>
         <th>Started at</th>
         <th>Actions</th>
     </tr>
@@ -60,7 +59,6 @@ Running jobs ({{ len .JobRuns }})<br />
     {{ range .JobRuns }}
         <tr>
             <td><span class="monospace"><a href="/entries/{{ .Entry.ID }}/runs/{{ .RunID }}">{{ .RunID }}</a></span></td>
-            <td>{{ if .Entry.Label }}{{ .Entry.Label }}{{ else }}-{{ end }}</td>
             <td>
                 <span class="monospace">{{ .StartedAt | FmtDate }}</span>
                 <small>({{ .StartedAt | ShortDur }})</small>
@@ -74,7 +72,7 @@ Running jobs ({{ len .JobRuns }})<br />
             </td>
         </tr>
     {{ else }}
-        <tr><td colspan="4"><em>No running jobs</em></td></tr>
+        <tr><td colspan="3"><em>No running jobs</em></td></tr>
     {{ end }}
     </tbody>
 </table>
@@ -84,7 +82,6 @@ Completed jobs ({{ len .CompletedJobRuns }})<br />
     <thead>
     <tr>
         <th>Run ID</th>
-        <th>Label</th>
         <th>Started at</th>
         <th>Completed at</th>
         <th>Error</th>
@@ -95,7 +92,6 @@ Completed jobs ({{ len .CompletedJobRuns }})<br />
     {{ range .CompletedJobRuns }}
         <tr>
             <td><span class="monospace"><a href="/entries/{{ .Entry.ID }}/runs/{{ .RunID }}">{{ .RunID }}</a></span></td>
-            <td>{{ if .Entry.Label }}{{ .Entry.Label }}{{ else }}-{{ end }}</td>
             <td><span class="monospace">{{ .StartedAt | FmtDate }}</span> <small>({{ .StartedAt | ShortDur }})</small></td>
             <td><span class="monospace">{{ .CompletedAt | FmtDate }}</span> <small>({{ .CompletedAt | ShortDur }})</small></td>
             <td>
@@ -114,7 +110,7 @@ Completed jobs ({{ len .CompletedJobRuns }})<br />
             </td>
         </tr>
     {{ else }}
-        <tr><td colspan="6"><em>No completed jobs</em></td></tr>
+        <tr><td colspan="5"><em>No completed jobs</em></td></tr>
     {{ end }}
     </tbody>
 </table>
