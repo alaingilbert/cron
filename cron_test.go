@@ -1124,7 +1124,7 @@ func TestAddJob1(t *testing.T) {
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
 	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
-	_, _ = cron.AddJob1("* * * * * ?", baseJob{&calls})
+	_, _ = cron.AddJobStrict("* * * * * ?", baseJob{&calls})
 	cron.Start()
 	advanceAndCycle(cron, time.Second)
 	assert.Equal(t, int32(1), calls.Load())
@@ -1151,7 +1151,7 @@ func TestUpdateScheduleWithSpec(t *testing.T) {
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
 	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
-	id, _ := cron.AddJob1("0 0 1 * * *", baseJob{&calls})
+	id, _ := cron.AddJobStrict("0 0 1 * * *", baseJob{&calls})
 	cron.Start()
 	advanceAndCycle(cron, time.Second)
 	assert.Equal(t, int32(0), calls.Load())
@@ -1168,7 +1168,7 @@ func TestUpdateSchedule(t *testing.T) {
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
 	cron := New(WithClock(clock), WithParser(secondParser), WithLogger(newErrLogger()))
-	id, _ := cron.AddJob1("0 0 1 * * *", baseJob{&calls})
+	id, _ := cron.AddJobStrict("0 0 1 * * *", baseJob{&calls})
 	cron.Start()
 	advanceAndCycle(cron, time.Second)
 	assert.Equal(t, int32(0), calls.Load())

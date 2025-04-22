@@ -256,9 +256,9 @@ func (c *Cron) AddJob(spec string, job IntoJob, opts ...EntryOption) (EntryID, e
 	return c.addJob(spec, job, opts...)
 }
 
-// AddJob1 adds a Job to the Cron to be run on the given schedule.
-func (c *Cron) AddJob1(spec string, job Job, opts ...EntryOption) (EntryID, error) {
-	return c.addJob(spec, job, opts...)
+// AddJobStrict adds a Job to the Cron to be run on the given schedule.
+func (c *Cron) AddJobStrict(spec string, job Job, opts ...EntryOption) (EntryID, error) {
+	return c.addJobStrict(spec, job, opts...)
 }
 
 // Schedule adds a Job to the Cron to be run on the given schedule.
@@ -574,10 +574,10 @@ func (c *Cron) runNow(id EntryID) error {
 }
 
 func (c *Cron) addJob(spec string, job IntoJob, opts ...EntryOption) (EntryID, error) {
-	return c.addJob1(spec, castIntoJob(job), opts...)
+	return c.addJobStrict(spec, castIntoJob(job), opts...)
 }
 
-func (c *Cron) addJob1(spec string, job Job, opts ...EntryOption) (EntryID, error) {
+func (c *Cron) addJobStrict(spec string, job Job, opts ...EntryOption) (EntryID, error) {
 	schedule, err := c.parser.Parse(spec)
 	if err != nil {
 		var zeroID EntryID
