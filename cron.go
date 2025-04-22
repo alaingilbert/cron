@@ -41,6 +41,7 @@ type Cron struct {
 	jobRunCreatedCh      chan JobRun                                  // Channel for receiving notifications when new job runs are created
 	jobRunCompletedCh    chan JobRun                                  // Channel for receiving notifications when job runs complete
 	keepCompletedRunsDur mtx.Mtx[time.Duration]                       // Duration to keep completed job runs before cleanup (thread-safe)
+	cleanupNowCh         chan struct{}                                // Channel to trigger immediate cleanup of completed job runs
 	lastCleanupTS        mtx.Mtx[time.Time]                           // Timestamp of last completed job runs cleanup (thread-safe)
 	hooks                mtx.RWMtx[hooksContainer]                    // Thread-safe container for managing job hooks (both global and entry-specific)
 }
@@ -163,6 +164,7 @@ func New(opts ...Option) *Cron {
 		jobRunCreatedCh:      make(chan JobRun),
 		jobRunCompletedCh:    make(chan JobRun),
 		keepCompletedRunsDur: mtx.NewMtx(keepCompletedRunsDur),
+		cleanupNowCh:         make(chan struct{}),
 		hooks: mtx.NewRWMtx(hooksContainer{
 			hooksMap:       make(map[HookID]hookMeta),
 			globalHooksMap: make(map[JobEventType][]*hookStruct),
@@ -359,6 +361,9 @@ func (c *Cron) GetNextTime() time.Time { return c.getNextTime() }
 // GetCleanupTS returns the timestamp of the last completed job runs cleanup
 func (c *Cron) GetCleanupTS() time.Time { return c.lastCleanupTS.Get() }
 
+// CleanupNow triggers immediate cleanup of completed job runs
+func (c *Cron) CleanupNow() { c.cleanupNow() }
+
 //-----------------------------------------------------------------------------
 
 func startCleanupThread(c *Cron) {
@@ -368,6 +373,7 @@ func startCleanupThread(c *Cron) {
 			keepCompletedRunsDur := c.keepCompletedRunsDur.Get()
 			select {
 			case <-c.clock.After(keepCompletedRunsDur):
+			case <-c.cleanupNowCh:
 			case <-c.ctx.Done():
 				return
 			}
@@ -397,6 +403,10 @@ func startCleanupThread(c *Cron) {
 			c.lastCleanupTS.Set(c.clock.Now())
 		}
 	}()
+}
+
+func (c *Cron) cleanupNow() {
+	utils.NonBlockingSend(c.cleanupNowCh, struct{}{})
 }
 
 func (c *Cron) start() (started bool) {
