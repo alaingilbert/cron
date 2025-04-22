@@ -3,6 +3,7 @@ Jobs has a context
 Jobs recover panic by default  
 Jobs can have a description (label)  
 Jobs ID are string and can have user specified ID  
+Job run have a dedicated logger that can be use to keep logs for a specific run  
 Can add hooks callback to global JobEvent or entry specific events  
 Can have a job that only run once using cron.Once  
 Can change the *time.Location while running  
@@ -11,6 +12,15 @@ Use Heap data structure to store entries
 Can ask the cron object if a job is currently running with `isRunning := c.IsRunning(entryID)`  
 Tests runs in under a second (instead of over a minute)  
 Comes with a complete admin web interface built-in  
+
+Built in job wrapper:  
+```go
+func WithRetry(maxRetry int, job IntoJob) Job
+func WithTimeout(time.Duration, IntoJob) Job
+func WithDeadline(time.Time, IntoJob) Job
+func WithJitter(time.Duration, IntoJob) Job
+func SkipIfStillRunning(IntoJob) Job
+```
 
 ```go
 package main
