@@ -42,7 +42,7 @@ type Cron struct {
 	jobRunCompletedCh    chan JobRun                                  // Channel for receiving notifications when job runs complete
 	keepCompletedRunsDur mtx.Mtx[time.Duration]                       // Duration to keep completed job runs before cleanup (thread-safe)
 	lastCleanupTS        mtx.Mtx[time.Time]                           // Timestamp of last completed job runs cleanup (thread-safe)
-	hooks                mtx.RWMtx[hooksContainer]                    //
+	hooks                mtx.RWMtx[hooksContainer]                    // Thread-safe container for managing job hooks (both global and entry-specific)
 }
 
 type hooksContainer struct {
