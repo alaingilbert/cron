@@ -696,14 +696,6 @@ func (c *Cron) setEntryActive(id EntryID, active bool) {
 	c.entriesUpdated() // setEntryActive
 }
 
-func (c *Cron) updateScheduleWithSpec(id EntryID, spec string) error {
-	schedule, err := c.parser.Parse(spec)
-	if err != nil {
-		return err
-	}
-	return c.updateSchedule(id, &spec, schedule)
-}
-
 func (c *Cron) updateSchedule(id EntryID, spec *string, schedule Schedule) error {
 	if err := c.entries.WithE(func(entries *entries) error {
 		entry, exists := entries.entriesMap[id]
@@ -721,6 +713,14 @@ func (c *Cron) updateSchedule(id EntryID, spec *string, schedule Schedule) error
 	}
 	c.entriesUpdated() // updateSchedule
 	return nil
+}
+
+func (c *Cron) updateScheduleWithSpec(id EntryID, spec string) error {
+	schedule, err := c.parser.Parse(spec)
+	if err != nil {
+		return err
+	}
+	return c.updateSchedule(id, &spec, schedule)
 }
 
 func (c *Cron) getNextTime() (out time.Time) {
