@@ -560,36 +560,33 @@ func (c *Cron) hookClb(id HookID, clb func(*hookStruct)) {
 }
 
 func (c *Cron) hookRClb(id HookID, clb func(hookMeta)) error {
-	err := c.hooks.RWithE(func(v hooksContainer) error {
+	return c.hooks.RWithE(func(v hooksContainer) error {
 		if hook, ok := v.hooksMap[id]; ok {
 			clb(hook)
 			return nil
 		}
 		return ErrHookNotFound
 	})
-	return err
 }
 
 func (c *Cron) entryRClb(id EntryID, clb func(*Entry)) error {
-	err := c.entries.RWithE(func(entries entries) error {
+	return c.entries.RWithE(func(entries entries) error {
 		if entry, ok := entries.entriesMap[id]; ok {
 			clb(entry)
 			return nil
 		}
 		return ErrEntryNotFound
 	})
-	return err
 }
 
-func (c *Cron) jobRunRClb(jobRunsInnerMtx *mtx.RWMtx[jobRunsInner], runID RunID, clb func(*jobRunStruct)) error {
-	err := jobRunsInnerMtx.RWithE(func(jobRunsIn jobRunsInner) error {
+func jobRunRClb(jobRunsInnerMtx *mtx.RWMtx[jobRunsInner], runID RunID, clb func(*jobRunStruct)) error {
+	return jobRunsInnerMtx.RWithE(func(jobRunsIn jobRunsInner) error {
 		if run, ok := jobRunsIn.mapping[runID]; ok {
 			clb(run)
 			return nil
 		}
 		return ErrJobRunNotFound
 	})
-	return err
 }
 
 func (c *Cron) enableHook(id HookID) {
@@ -886,7 +883,7 @@ func (c *Cron) getJobRunClb(entryID EntryID, runID RunID, clb func(*jobRunStruct
 	if !ok {
 		return ErrEntryNotFound
 	}
-	return c.jobRunRClb(jobRunsInnerMtx, runID, clb)
+	return jobRunRClb(jobRunsInnerMtx, runID, clb)
 }
 
 func (c *Cron) cancelRun(entryID EntryID, runID RunID) error {
