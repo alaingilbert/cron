@@ -34,6 +34,15 @@ func (m *Mtx[T]) Set(v T) {
 	m.v = v
 }
 
+// Swap set a new value and return the old value
+func (m *Mtx[T]) Swap(newVal T) (old T) {
+	m.With(func(v *T) {
+		old = *v
+		*v = newVal
+	})
+	return
+}
+
 // With locks the mutex and applies the given function to the value.
 // It ignores errors.
 func (m *Mtx[T]) With(clb func(v *T)) {

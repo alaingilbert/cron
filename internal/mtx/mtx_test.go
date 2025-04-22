@@ -29,6 +29,13 @@ func TestSetAndGet(t *testing.T) {
 	assert.Equal(t, 20, m1.Get())
 }
 
+func TestMtx_Swap(t *testing.T) {
+	m := NewMtx("old")
+	old := m.Swap("new")
+	assert.Equal(t, "old", old)
+	assert.Equal(t, "new", m.Get())
+}
+
 func TestWith(t *testing.T) {
 	m := NewMtx(5)
 	m.With(func(v *int) {
