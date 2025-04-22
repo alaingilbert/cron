@@ -1,6 +1,7 @@
 package cron
 
 import (
+	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
@@ -18,6 +19,17 @@ func newTestEntry(id string, delay time.Duration) *Entry {
 	}
 }
 
+func TestEntryHeap_PopEmpty(t *testing.T) {
+	h := newEntryHeap()
+	assert.Nil(t, h.Pop())
+}
+
+func TestEntryHeap_PushTwice(t *testing.T) {
+	h := newEntryHeap()
+	h.Push(newTestEntry("1", 3*time.Second))
+	h.Push(newTestEntry("1", 3*time.Second))
+	assert.Equal(t, 1, len(h.entries))
+}
 func TestEntryHeap_PushPopOrder(t *testing.T) {
 	h := newEntryHeap()
 
@@ -47,6 +59,8 @@ func TestEntryHeap_Remove(t *testing.T) {
 	h.Push(e2)
 	h.Push(e3)
 
+	assert.False(t, h.Remove("10"))
+
 	removed := h.Remove("2")
 	if !removed {
 		t.Errorf("expected entry 2 to be removed")
@@ -71,6 +85,8 @@ func TestEntryHeap_Update(t *testing.T) {
 	h.Push(e1)
 	h.Push(e2)
 	h.Push(e3)
+
+	assert.ErrorIs(t, h.Update("20", time.Now().Add(500*time.Millisecond)), ErrEntryNotFound)
 
 	err := h.Update("2", time.Now().Add(500*time.Millisecond))
 	if err != nil {
