@@ -49,10 +49,12 @@
 Running jobs ({{ len .JobRuns }})<br />
 <table class="mb-1">
     <thead>
-    <th>Run ID</th>
-    <th>Label</th>
-    <th>Started at</th>
-    <th>Actions</th>
+    <tr>
+        <th>Run ID</th>
+        <th>Label</th>
+        <th>Started at</th>
+        <th>Actions</th>
+    </tr>
     </thead>
     <tbody>
     {{ range .JobRuns }}
@@ -80,12 +82,14 @@ Running jobs ({{ len .JobRuns }})<br />
 Completed jobs ({{ len .CompletedJobRuns }})<br />
 <table class="mb-1">
     <thead>
-    <th>Run ID</th>
-    <th>Label</th>
-    <th>Started at</th>
-    <th>Completed at</th>
-    <th>Error</th>
-    <th>Panic</th>
+    <tr>
+        <th>Run ID</th>
+        <th>Label</th>
+        <th>Started at</th>
+        <th>Completed at</th>
+        <th>Error</th>
+        <th>Panic</th>
+    </tr>
     </thead>
     <tbody>
     {{ range .CompletedJobRuns }}
