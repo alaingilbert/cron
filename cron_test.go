@@ -1649,12 +1649,15 @@ func TestDisableHook(t *testing.T) {
 func TestGetHooks(t *testing.T) {
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
 	cron := New(WithClock(clock), WithLogger(newNoOpLogger()))
+	eid, _ := cron.AddJob("* * * * * *", func() {})
 	hookID1 := cron.OnJobStart(func(ctx context.Context, c *Cron, id HookID, jr JobRun) {}, HookSync)
 	hookID2 := cron.OnJobCompleted(func(ctx context.Context, c *Cron, id HookID, jr JobRun) {}, HookSync)
+	hookID3 := cron.OnEntryJobCompleted(eid, func(ctx context.Context, c *Cron, id HookID, jr JobRun) {}, HookSync)
 	hooks := cron.GetHooks()
-	assert.Equal(t, 2, len(hooks))
-	assert.True(t, hooks[0].ID == hookID1 || hooks[0].ID == hookID2)
-	assert.True(t, hooks[1].ID == hookID1 || hooks[1].ID == hookID2)
+	assert.Equal(t, 3, len(hooks))
+	assert.True(t, hooks[0].ID == hookID1)
+	assert.True(t, hooks[1].ID == hookID2)
+	assert.True(t, hooks[2].ID == hookID3)
 }
 
 func TestGetHook(t *testing.T) {
