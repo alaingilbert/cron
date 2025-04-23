@@ -263,6 +263,12 @@ func (b *Builder) WithLogger(logger Logger) *Builder {
 	return b
 }
 
+// Quiet configures the builder to discard all log output
+func (b *Builder) Quiet() *Builder {
+	b.logger = DiscardLogger
+	return b
+}
+
 // WithContext sets the base context for the Cron instance.
 func (b *Builder) WithContext(ctx context.Context) *Builder {
 	b.ctx = ctx
