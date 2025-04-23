@@ -1108,6 +1108,17 @@ func TestWithIDFactory(t *testing.T) {
 	assert.Equal(t, EntryID("test"), id)
 }
 
+func TestWithJobRunLoggerFactory(t *testing.T) {
+	l := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	factory := FuncJobRunLoggerFactory(func(w io.Writer) *slog.Logger { return l })
+	cron := New(WithLogger(newErrLogger()), WithJobRunLoggerFactory(factory))
+	_, _ = cron.AddJob("* * * * *", func(jr JobRun) {
+		logger := jr.Logger()
+		assert.Equal(t, l, logger)
+	})
+	advanceAndCycle(cron, time.Second)
+}
+
 func TestAddEntry(t *testing.T) {
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
