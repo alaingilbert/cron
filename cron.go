@@ -60,6 +60,10 @@ type hookMeta struct {
 	entryID *EntryID
 }
 
+func (c *hooksContainer) hooksFor(evt JobEventType, entryID EntryID) []*hookStruct {
+	return append(c.globalHooksMap[evt], c.entryHooksMap[entryID][evt]...)
+}
+
 func (c *hooksContainer) iterHooks() iter.Seq[hookMeta] {
 	return func(yield func(hookMeta) bool) {
 		for evt, hooks := range c.globalHooksMap {
@@ -1039,9 +1043,7 @@ func makeEventErr(c *Cron, jobRun *jobRunStruct, typ JobEventType, err error) {
 
 func triggerHooks(c *Cron, ctx context.Context, jr JobRun, evtType JobEventType) {
 	c.hooks.RWith(func(v hooksContainer) {
-		entryID := jr.Entry.ID
-		hooks := v.globalHooksMap[evtType]
-		hooks = append(hooks, v.entryHooksMap[entryID][evtType]...)
+		hooks := v.hooksFor(evtType, jr.Entry.ID)
 		utils.ForEach(hooks, func(hook *hookStruct) {
 			if hook.active {
 				fn := func() { hook.fn(ctx, c, hook.id, jr) }
