@@ -559,6 +559,15 @@ func (c *Cron) removeHook(id HookID) {
 	})
 }
 
+func (c *Cron) getHooks() (out []Hook) {
+	c.hooks.RWith(func(v hooksContainer) {
+		for hook := range v.iterHooks() {
+			out = append(out, hook.hook.export(hook.evt, hook.entryID))
+		}
+	})
+	return
+}
+
 func (c *Cron) hookClb(id HookID, clb func(meta hookMeta)) {
 	c.hooks.With(func(v *hooksContainer) {
 		if hook, ok := v.hooksMap[id]; ok {
@@ -624,25 +633,16 @@ func (c *Cron) setHookLabel(id HookID, label string) {
 	c.hookClb(id, func(hook hookMeta) { (*hook.hook).label = label })
 }
 
-func (c *Cron) getHooks() (out []Hook) {
-	c.hooks.RWith(func(v hooksContainer) {
-		for hook := range v.iterHooks() {
-			out = append(out, hook.hook.export(hook.evt, hook.entryID))
-		}
-	})
-	return
-}
-
 func (c *Cron) onJobStart(clb HookFn, opts ...HookOption) HookID {
 	return c.onEvt(JobStart, clb, opts...)
 }
 
-func (c *Cron) onEntryJobStart(entryID EntryID, clb HookFn, opts ...HookOption) HookID {
-	return c.onEntryEvt(entryID, JobStart, clb, opts...)
-}
-
 func (c *Cron) onJobCompleted(clb HookFn, opts ...HookOption) HookID {
 	return c.onEvt(JobCompleted, clb, opts...)
+}
+
+func (c *Cron) onEntryJobStart(entryID EntryID, clb HookFn, opts ...HookOption) HookID {
+	return c.onEntryEvt(entryID, JobStart, clb, opts...)
 }
 
 func (c *Cron) onEntryJobCompleted(entryID EntryID, clb HookFn, opts ...HookOption) HookID {
