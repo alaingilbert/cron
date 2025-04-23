@@ -1,5 +1,5 @@
 Changes:  
-Jobs has a context  
+Job runs has a context, so each "run" can be individually cancelled  
 Jobs recover panic by default  
 Jobs can have a description (label)  
 Jobs ID are string and can have user specified ID  
@@ -36,7 +36,6 @@ import (
 	"fmt"
 	"github.com/alaingilbert/cron"
 	"github.com/alaingilbert/cron/webadmin"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -57,7 +56,7 @@ func main() {
 	l := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 
 	c := cron.New().
-		WithParser(cron.SecondParser).
+		WithSeconds().
 		WithContext(appCtx). // Can provide a custom context
 		WithLogger(l).       // Can provide a custom logger
 		Build()
@@ -242,7 +241,7 @@ func main() {
 	// This library comes with a complete web interface administration tool (optional)
 	mux := webadmin.GetMux(c)
 	if err := http.ListenAndServe(":8080", mux); err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 }
 
