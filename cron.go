@@ -711,7 +711,7 @@ func (c *Cron) runNow(id EntryID) error {
 }
 
 func (c *Cron) modifyEntry(id EntryID, updateFunc func(entry *Entry) bool) error {
-	err := c.entries.WithE(func(entries *entries) error {
+	if err := c.entries.WithE(func(entries *entries) error {
 		entry, exists := entries.entriesMap[id]
 		if !exists {
 			return ErrEntryNotFound
@@ -723,11 +723,11 @@ func (c *Cron) modifyEntry(id EntryID, updateFunc func(entry *Entry) bool) error
 		entry.Next = newNext
 		_ = entries.heap.Update(id, newNext)
 		return nil
-	})
-	if err == nil {
-		c.entriesUpdated() // modifyEntry
+	}); err != nil {
+		return err
 	}
-	return err
+	c.entriesUpdated() // modifyEntry
+	return nil
 }
 
 func (c *Cron) setEntryActive(id EntryID, active bool) {
