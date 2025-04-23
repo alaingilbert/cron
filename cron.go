@@ -162,14 +162,25 @@ func UuidIDFactory() IDFactory {
 	})
 }
 
+// JobRunLoggerFactory is an interface for creating loggers for individual job runs.
+// Implementations should create a new logger that writes to the provided io.Writer.
 type JobRunLoggerFactory interface {
+	// New creates a new slog.Logger instance that writes to the given io.Writer.
 	New(w io.Writer) *slog.Logger
 }
 
+// FuncJobRunLoggerFactory is a function type that implements JobRunLoggerFactory.
+// It allows any function with the signature func(w io.Writer) *slog.Logger
+// to be used as a JobRunLoggerFactory.
 type FuncJobRunLoggerFactory func(w io.Writer) *slog.Logger
 
+// New implements the JobRunLoggerFactory interface for FuncJobRunLoggerFactory.
+// It simply calls the underlying function with the provided writer.
 func (f FuncJobRunLoggerFactory) New(w io.Writer) *slog.Logger { return f(w) }
 
+// DefaultJobRunLoggerFactory returns a default implementation of JobRunLoggerFactory.
+// The default implementation creates a text-based logger with debug level logging
+// that writes to the provided io.Writer.
 func DefaultJobRunLoggerFactory() JobRunLoggerFactory {
 	return FuncJobRunLoggerFactory(func(w io.Writer) *slog.Logger {
 		return slog.New(slog.NewTextHandler(w, &slog.HandlerOptions{Level: slog.LevelDebug}))
