@@ -551,37 +551,41 @@ func (c *Cron) removeHook(id HookID) {
 	})
 }
 
-func (c *Cron) hookClb(id HookID, clb func(*hookStruct)) {
+func (c *Cron) hookClb(id HookID, clb func(meta hookMeta)) {
 	c.hooks.With(func(v *hooksContainer) {
 		if hook, ok := v.hooksMap[id]; ok {
-			clb(hook.hook)
+			clb(hook)
 		}
 	})
 }
 
-func lookupClb[K comparable, V any, M map[K]V](m M, k K, clb func(V), e error) error {
-	if hook, ok := m[k]; ok {
+func lookupClb[K comparable, V any, M map[K]V](m M, k K, clb func(V)) bool {
+	hook, ok := m[k]
+	if ok {
 		clb(hook)
-		return nil
 	}
-	return e
+	return ok
+}
+
+func lookupErrClb[K comparable, V any, M map[K]V](m M, k K, clb func(V), e error) error {
+	return utils.TernaryOrZero(!lookupClb(m, k, clb), e)
 }
 
 func (c *Cron) hookRClb(id HookID, clb func(hookMeta)) error {
 	return c.hooks.RWithE(func(v hooksContainer) error {
-		return lookupClb(v.hooksMap, id, clb, ErrHookNotFound)
+		return lookupErrClb(v.hooksMap, id, clb, ErrHookNotFound)
 	})
 }
 
 func (c *Cron) entryRClb(id EntryID, clb func(*Entry)) error {
 	return c.entries.RWithE(func(entries entries) error {
-		return lookupClb(entries.entriesMap, id, clb, ErrEntryNotFound)
+		return lookupErrClb(entries.entriesMap, id, clb, ErrEntryNotFound)
 	})
 }
 
 func jobRunRClb(mx *mtx.RWMtx[jobRunsInner], runID RunID, clb func(*jobRunStruct)) error {
 	return mx.RWithE(func(jobRunsIn jobRunsInner) error {
-		return lookupClb(jobRunsIn.mapping, runID, clb, ErrJobRunNotFound)
+		return lookupErrClb(jobRunsIn.mapping, runID, clb, ErrJobRunNotFound)
 	})
 }
 
@@ -601,15 +605,15 @@ func (c *Cron) getJobRun(entryID EntryID, runID RunID) (out JobRun, err error) {
 }
 
 func (c *Cron) enableHook(id HookID) {
-	c.hookClb(id, func(hook *hookStruct) { (*hook).active = true })
+	c.hookClb(id, func(hook hookMeta) { (*hook.hook).active = true })
 }
 
 func (c *Cron) disableHook(id HookID) {
-	c.hookClb(id, func(hook *hookStruct) { (*hook).active = false })
+	c.hookClb(id, func(hook hookMeta) { (*hook.hook).active = false })
 }
 
 func (c *Cron) setHookLabel(id HookID, label string) {
-	c.hookClb(id, func(hook *hookStruct) { (*hook).label = label })
+	c.hookClb(id, func(hook hookMeta) { (*hook.hook).label = label })
 }
 
 func (c *Cron) getHooks() (out []Hook) {
