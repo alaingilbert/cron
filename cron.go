@@ -233,6 +233,12 @@ func (b *Builder) WithParser(parser ScheduleParser) *Builder {
 	return b
 }
 
+// WithSeconds configures the parser to include seconds in the schedule specification.
+func (b *Builder) WithSeconds() *Builder {
+	b.parser = SecondParser
+	return b
+}
+
 // WithIDFactory sets the ID generator factory for the Cron instance.
 func (b *Builder) WithIDFactory(idFactory IDFactory) *Builder {
 	b.idFactory = idFactory
