@@ -69,9 +69,8 @@ func TestFuncPanicRecovery(t *testing.T) {
 	assert.Equal(t, "PANIC ERROR", <-ch)
 }
 
-func newNoOpLogger() *slog.Logger {
-	handler := slog.NewTextHandler(io.Discard, nil)
-	return slog.New(handler)
+func newNoOpLogger() Logger {
+	return DiscardLogger
 }
 
 func newErrLogger() *slog.Logger {
@@ -1110,7 +1109,7 @@ func TestWithIDFactory(t *testing.T) {
 
 func TestWithJobRunLoggerFactory(t *testing.T) {
 	l := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	factory := FuncJobRunLoggerFactory(func(w io.Writer) *slog.Logger { return l })
+	factory := FuncJobRunLoggerFactory(func(w io.Writer) Logger { return l })
 	cron := New().WithLogger(newErrLogger()).WithJobRunLoggerFactory(factory).Build()
 	_, _ = cron.AddJob("* * * * *", func(jr JobRun) {
 		logger := jr.Logger()

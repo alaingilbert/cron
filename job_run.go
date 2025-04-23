@@ -3,7 +3,6 @@ package cron
 import (
 	"bytes"
 	"context"
-	"log/slog"
 	"sync"
 	"time"
 
@@ -16,20 +15,20 @@ type RunID ID
 
 // JobRun represents a single execution of a scheduled job.
 type JobRun struct {
-	RunID       RunID        // Unique identifier for this job run
-	Entry       Entry        // Job definition being executed
-	CreatedAt   time.Time    // When the run was created
-	StartedAt   *time.Time   // When execution began (nil if not started)
-	CompletedAt *time.Time   // When execution finished (nil if not completed)
-	Events      []JobEvent   // Timeline of events during execution
-	Error       error        // Final error state if any
-	Panic       bool         // Whether job panicked during execution
-	Logs        string       // Captured log output
-	logger      *slog.Logger // Internal logger instance
+	RunID       RunID      // Unique identifier for this job run
+	Entry       Entry      // Job definition being executed
+	CreatedAt   time.Time  // When the run was created
+	StartedAt   *time.Time // When execution began (nil if not started)
+	CompletedAt *time.Time // When execution finished (nil if not completed)
+	Events      []JobEvent // Timeline of events during execution
+	Error       error      // Final error state if any
+	Panic       bool       // Whether job panicked during execution
+	Logs        string     // Captured log output
+	logger      Logger     // Internal logger instance
 }
 
 // Logger returns the structured logger for this job run
-func (j JobRun) Logger() *slog.Logger {
+func (j JobRun) Logger() Logger {
 	return j.logger
 }
 
@@ -42,7 +41,7 @@ type jobRunStruct struct {
 	ctx       context.Context
 	cancel    context.CancelFunc
 	logsBuf   bytes.Buffer
-	logger    *slog.Logger
+	logger    Logger
 }
 
 type jobRunInner struct {

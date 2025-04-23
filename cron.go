@@ -35,7 +35,7 @@ type Cron struct {
 	update               chan context.CancelFunc                      // Triggers update in the scheduler loop
 	running              atomic.Bool                                  // Indicates if the scheduler is currently running
 	location             atomic.Pointer[time.Location]                // Thread-safe time zone location
-	logger               *slog.Logger                                 // Logger for scheduler events, errors, and diagnostics
+	logger               Logger                                       // Logger for scheduler events, errors, and diagnostics
 	parser               ScheduleParser                               // Parses cron expressions into schedule objects
 	idFactory            IDFactory                                    // Generates a new unique ID for Entry/JobRun/Hook
 	jobRunLoggerFactory  JobRunLoggerFactory                          // Factory for creating loggers for individual job runs
@@ -174,23 +174,23 @@ func UuidIDFactory() IDFactory {
 // Implementations should create a new logger that writes to the provided io.Writer.
 type JobRunLoggerFactory interface {
 	// New creates a new slog.Logger instance that writes to the given io.Writer.
-	New(w io.Writer) *slog.Logger
+	New(w io.Writer) Logger
 }
 
 // FuncJobRunLoggerFactory is a function type that implements JobRunLoggerFactory.
 // It allows any function with the signature func(w io.Writer) *slog.Logger
 // to be used as a JobRunLoggerFactory.
-type FuncJobRunLoggerFactory func(w io.Writer) *slog.Logger
+type FuncJobRunLoggerFactory func(w io.Writer) Logger
 
 // New implements the JobRunLoggerFactory interface for FuncJobRunLoggerFactory.
 // It simply calls the underlying function with the provided writer.
-func (f FuncJobRunLoggerFactory) New(w io.Writer) *slog.Logger { return f(w) }
+func (f FuncJobRunLoggerFactory) New(w io.Writer) Logger { return f(w) }
 
 // DefaultJobRunLoggerFactory returns a default implementation of JobRunLoggerFactory.
 // The default implementation creates a text-based logger with debug level logging
 // that writes to the provided io.Writer.
 func DefaultJobRunLoggerFactory() JobRunLoggerFactory {
-	return FuncJobRunLoggerFactory(func(w io.Writer) *slog.Logger {
+	return FuncJobRunLoggerFactory(func(w io.Writer) Logger {
 		return slog.New(slog.NewTextHandler(w, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	})
 }
@@ -211,7 +211,7 @@ type Builder struct {
 	idFactory            IDFactory
 	jobRunLoggerFactory  JobRunLoggerFactory
 	keepCompletedRunsDur *time.Duration
-	logger               *slog.Logger
+	logger               Logger
 	ctx                  context.Context
 }
 
@@ -258,7 +258,7 @@ func (b *Builder) WithKeepCompletedRunsDur(keepCompletedRunsDur time.Duration) *
 }
 
 // WithLogger sets the logger for the Cron instance.
-func (b *Builder) WithLogger(logger *slog.Logger) *Builder {
+func (b *Builder) WithLogger(logger Logger) *Builder {
 	b.logger = logger
 	return b
 }
@@ -275,7 +275,7 @@ func (b *Builder) Build() *Cron {
 	clock := utils.Or(b.clock, clockwork.NewRealClock())
 	location := utils.Or(b.location, clock.Now().Location())
 	parentCtx := utils.Or(b.ctx, context.Background())
-	logger := utils.Or(b.logger, slog.Default())
+	logger := utils.Or(b.logger, DefaultLogger)
 	parser := utils.Or(b.parser, ScheduleParser(standardParser))
 	idFactory := utils.Or(b.idFactory, UuidIDFactory())
 	jobRunLoggerFactory := utils.Or(b.jobRunLoggerFactory, DefaultJobRunLoggerFactory())
