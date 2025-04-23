@@ -641,22 +641,6 @@ func (c *Cron) onEntryJobCompleted(entryID EntryID, clb HookFn, opts ...HookOpti
 	return c.onEntryEvt(entryID, JobCompleted, clb, opts...)
 }
 
-func (c *Cron) runNow(id EntryID) error {
-	if err := c.entries.WithE(func(entries *entries) error {
-		if entry, ok := (*entries).entriesMap[id]; ok {
-			newNext := c.now()
-			(*entry).Next = newNext
-			_ = entries.heap.Update(id, newNext)
-			return nil
-		}
-		return ErrEntryNotFound
-	}); err != nil {
-		return err
-	}
-	c.entriesUpdated() // runNow
-	return nil
-}
-
 func (c *Cron) addJob(spec string, job IntoJob, opts ...EntryOption) (EntryID, error) {
 	return c.addJobStrict(spec, castIntoJob(job), opts...)
 }
@@ -708,6 +692,22 @@ func (c *Cron) updateLabel(id EntryID, label string) {
 			(*entry).Label = label
 		}
 	})
+}
+
+func (c *Cron) runNow(id EntryID) error {
+	if err := c.entries.WithE(func(entries *entries) error {
+		if entry, ok := (*entries).entriesMap[id]; ok {
+			newNext := c.now()
+			(*entry).Next = newNext
+			_ = entries.heap.Update(id, newNext)
+			return nil
+		}
+		return ErrEntryNotFound
+	}); err != nil {
+		return err
+	}
+	c.entriesUpdated() // runNow
+	return nil
 }
 
 func (c *Cron) modifyEntry(id EntryID, updateFunc func(entry *Entry) bool) error {
