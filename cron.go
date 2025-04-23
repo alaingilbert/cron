@@ -465,16 +465,16 @@ func (c *Cron) setCleanupInterval(dur time.Duration) {
 	c.cleanupNow()
 }
 
-func fnMaybeAsync(fn func(), async bool) func() {
+func maybeAsync(fn func(), async bool) func() {
 	return utils.Ternary(async, func() { go fn() }, func() { fn() })
 }
 
 func (c *Cron) start() (started bool) {
-	return c.startWith(fnMaybeAsync(c.run, false)) // sync
+	return c.startWith(maybeAsync(c.run, false)) // sync
 }
 
 func (c *Cron) startAsync() (started bool) {
-	return c.startWith(fnMaybeAsync(c.run, true)) // async
+	return c.startWith(maybeAsync(c.run, true)) // async
 }
 
 func (c *Cron) startWith(runFunc func()) (started bool) {
@@ -1045,7 +1045,7 @@ func triggerHooks(c *Cron, ctx context.Context, jr JobRun, evtType JobEventType)
 		utils.ForEach(hooks, func(hook *hookStruct) {
 			if hook.active {
 				fn := func() { hook.fn(ctx, c, hook.id, jr) }
-				fnMaybeAsync(fn, hook.runAsync)()
+				maybeAsync(fn, hook.runAsync)()
 			}
 		})
 	})
