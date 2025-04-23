@@ -1036,7 +1036,9 @@ func makeEventErr(c *Cron, jobRun *jobRunStruct, typ JobEventType, err error) {
 func triggerHooks(c *Cron, ctx context.Context, jr JobRun, evtType JobEventType) {
 	c.hooks.RWith(func(v hooksContainer) {
 		entryID := jr.Entry.ID
-		runHook := func(hook *hookStruct) {
+		hooks := v.globalHooksMap[evtType]
+		hooks = append(hooks, v.entryHooksMap[entryID][evtType]...)
+		utils.ForEach(hooks, func(hook *hookStruct) {
 			if hook.active {
 				fn := func() { hook.fn(ctx, c, hook.id, jr) }
 				if hook.runAsync {
@@ -1045,13 +1047,7 @@ func triggerHooks(c *Cron, ctx context.Context, jr JobRun, evtType JobEventType)
 					fn()
 				}
 			}
-		}
-		for _, hook := range v.globalHooksMap[evtType] {
-			runHook(hook)
-		}
-		for _, hook := range v.entryHooksMap[entryID][evtType] {
-			runHook(hook)
-		}
+		})
 	})
 }
 
