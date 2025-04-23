@@ -147,11 +147,19 @@ type ScheduleParser interface {
 // ID is the type to use for all internal IDs (EntryID, RunID, HookID)
 type ID string
 
+// FuncIDFactory is a function type that generates a new unique ID.
+// It implements the IDFactory interface by providing a Next() method.
 type FuncIDFactory func() ID
 
+// Next implements the IDFactory interface for FuncIDFactory.
+// It calls the underlying function to generate and return a new ID.
 func (f FuncIDFactory) Next() ID { return f() }
 
+// IDFactory is an interface for types that can generate unique IDs.
+// Implementations should provide thread-safe ID generation.
 type IDFactory interface {
+	// Next generates and returns a new unique ID.
+	// Implementations must ensure IDs are unique across calls.
 	Next() ID
 }
 
