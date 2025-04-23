@@ -694,15 +694,21 @@ func (c *Cron) updateLabel(id EntryID, label string) {
 	})
 }
 
+func setNext(entries *entries, entry *Entry, id EntryID, c *Cron, isNow bool) {
+	now := c.now()
+	newNext := utils.Ternary(isNow, now, entry.Schedule.Next(now))
+	newNext = utils.TernaryOrZero(entry.Active, newNext)
+	(*entry).Next = newNext
+	_ = entries.heap.Update(id, newNext)
+}
+
 func (c *Cron) runNow(id EntryID) error {
 	if err := c.entries.WithE(func(entries *entries) error {
 		entry, exists := (*entries).entriesMap[id]
 		if !exists {
 			return ErrEntryNotFound
 		}
-		newNext := utils.TernaryOrZero(entry.Active, c.now())
-		(*entry).Next = newNext
-		_ = entries.heap.Update(id, newNext)
+		setNext(entries, entry, id, c, true)
 		return nil
 	}); err != nil {
 		return err
@@ -720,9 +726,7 @@ func (c *Cron) modifyEntry(id EntryID, updateFunc func(entry *Entry) bool) error
 		if !updateFunc(entry) {
 			return errors.New("not changed")
 		}
-		newNext := utils.TernaryOrZero(entry.Active, entry.Schedule.Next(c.now()))
-		entry.Next = newNext
-		_ = entries.heap.Update(id, newNext)
+		setNext(entries, entry, id, c, false)
 		return nil
 	}); err != nil {
 		return err
