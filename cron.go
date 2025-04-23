@@ -725,7 +725,7 @@ func (c *Cron) modifyEntry(id EntryID, updateFunc func(entry *Entry) bool) error
 		return nil
 	})
 	if err == nil {
-		c.entriesUpdated()
+		c.entriesUpdated() // modifyEntry
 	}
 	return err
 }
