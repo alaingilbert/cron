@@ -195,19 +195,85 @@ func DefaultJobRunLoggerFactory() JobRunLoggerFactory {
 	})
 }
 
-//-----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
-// New returns a new Cron job runner
-func New(opts ...Option) *Cron {
-	cfg := utils.BuildConfig(opts)
-	clock := utils.Or(cfg.Clock, clockwork.NewRealClock())
-	location := utils.Or(cfg.Location, clock.Now().Location())
-	parentCtx := utils.Or(cfg.Ctx, context.Background())
-	logger := utils.Or(cfg.Logger, slog.Default())
-	parser := utils.Or(cfg.Parser, ScheduleParser(standardParser))
-	idFactory := utils.Or(cfg.IDFactory, UuidIDFactory())
-	jobRunLoggerFactory := utils.Or(cfg.JobRunLoggerFactory, DefaultJobRunLoggerFactory())
-	keepCompletedRunsDur := utils.Default(cfg.KeepCompletedRunsDur, 0)
+// New creates a new Builder instance for constructing a Cron scheduler.
+func New() *Builder {
+	return &Builder{}
+}
+
+// Builder provides a fluent interface for constructing a Cron instance with optional configuration.
+// Use New() to create a builder, chain configuration methods, and call Build() to create the Cron instance.
+type Builder struct {
+	clock                clockwork.Clock
+	location             *time.Location
+	parser               ScheduleParser
+	idFactory            IDFactory
+	jobRunLoggerFactory  JobRunLoggerFactory
+	keepCompletedRunsDur *time.Duration
+	logger               *slog.Logger
+	ctx                  context.Context
+}
+
+// WithClock sets the clock implementation for the Cron instance.
+func (b *Builder) WithClock(clock clockwork.Clock) *Builder {
+	b.clock = clock
+	return b
+}
+
+// WithLocation sets the timezone location for the Cron instance.
+func (b *Builder) WithLocation(loc *time.Location) *Builder {
+	b.location = loc
+	return b
+}
+
+// WithParser sets the schedule parser for the Cron instance.
+func (b *Builder) WithParser(parser ScheduleParser) *Builder {
+	b.parser = parser
+	return b
+}
+
+// WithIDFactory sets the ID generator factory for the Cron instance.
+func (b *Builder) WithIDFactory(idFactory IDFactory) *Builder {
+	b.idFactory = idFactory
+	return b
+}
+
+// WithJobRunLoggerFactory sets the logger factory for individual job runs.
+func (b *Builder) WithJobRunLoggerFactory(jobRunLoggerFactory JobRunLoggerFactory) *Builder {
+	b.jobRunLoggerFactory = jobRunLoggerFactory
+	return b
+}
+
+// WithKeepCompletedRunsDur sets the duration to keep completed job runs before cleanup.
+func (b *Builder) WithKeepCompletedRunsDur(keepCompletedRunsDur time.Duration) *Builder {
+	b.keepCompletedRunsDur = &keepCompletedRunsDur
+	return b
+}
+
+// WithLogger sets the logger for the Cron instance.
+func (b *Builder) WithLogger(logger *slog.Logger) *Builder {
+	b.logger = logger
+	return b
+}
+
+// WithContext sets the base context for the Cron instance.
+func (b *Builder) WithContext(ctx context.Context) *Builder {
+	b.ctx = ctx
+	return b
+}
+
+// Build constructs and returns a configured Cron instance using the builder's settings.
+// Default values are used for any unconfigured properties.
+func (b *Builder) Build() *Cron {
+	clock := utils.Or(b.clock, clockwork.NewRealClock())
+	location := utils.Or(b.location, clock.Now().Location())
+	parentCtx := utils.Or(b.ctx, context.Background())
+	logger := utils.Or(b.logger, slog.Default())
+	parser := utils.Or(b.parser, ScheduleParser(standardParser))
+	idFactory := utils.Or(b.idFactory, UuidIDFactory())
+	jobRunLoggerFactory := utils.Or(b.jobRunLoggerFactory, DefaultJobRunLoggerFactory())
+	keepCompletedRunsDur := utils.Default(b.keepCompletedRunsDur, 0)
 	ctx, cancel := context.WithCancel(parentCtx)
 	c := &Cron{
 		cond:                 sync.Cond{L: &sync.Mutex{}},
