@@ -8,6 +8,9 @@ Completed jobs ({{ len .CompletedJobRuns }})<br />
             <th>Label</th>
             <th>Spec</th>
             <th>Started at</th>
+            <th>Completed at</th>
+            <th>Error</th>
+            <th>Panic</th>
         </tr>
     </thead>
     <tbody>
@@ -18,9 +21,24 @@ Completed jobs ({{ len .CompletedJobRuns }})<br />
             <td><span class="label">{{ if .Entry.Label }}{{ .Entry.Label }}{{ else }}-{{ end }}</span></td>
             <td>{{ if .Entry.Spec }}{{ .Entry.Spec }}{{ else }}-{{ end }}</td>
             <td>{{ .StartedAt | FmtDate }} <small>({{ .StartedAt | ShortDur }})</small></td>
+            <td>{{ .CompletedAt | FmtDate }} <small>({{ .CompletedAt | ShortDur }})</small></td>
+            <td>
+                {{ if .Error }}
+                    <span class="danger" title="{{ .Error.Error }}">Error</span>
+                {{ else }}
+                    <span>-</span>
+                {{ end }}
+            </td>
+            <td>
+                {{ if .Panic }}
+                    <span class="danger">Panic</span>
+                {{ else }}
+                    <span>-</span>
+                {{ end }}
+            </td>
         </tr>
     {{ else }}
-        <tr><td colspan="5"><em>No completed jobs</em></td></tr>
+        <tr><td colspan="8"><em>No completed jobs</em></td></tr>
     {{ end }}
     </tbody>
 </table>
