@@ -19,13 +19,14 @@ func hookFunc(idFactory IDFactory, fn HookFn) *hookStruct {
 	}
 }
 
+// Hook represents a configured cron job hook with its properties.
 type Hook struct {
-	ID        HookID
-	EntryID   *EntryID
-	EventType JobEventType
-	Active    bool
-	Async     bool
-	Label     string
+	ID        HookID       // Unique identifier for the hook
+	EntryID   *EntryID     // Associated job entry ID (nil if global)
+	EventType JobEventType // Type of job event that triggers this hook
+	Active    bool         // Whether the hook is currently active
+	Async     bool         // Whether the hook runs asynchronously
+	Label     string       // Human-readable label for the hook
 }
 
 type hookStruct struct {
@@ -55,12 +56,14 @@ func HookSync(hook *hookStruct) {
 	hook.runAsync = false
 }
 
+// HookLabel returns a HookOption that sets the label for a hook.
 func HookLabel(label string) HookOption {
 	return func(hook *hookStruct) {
 		hook.label = label
 	}
 }
 
+// HookDisable disables a hook by setting its active status to false.
 func HookDisable(hook *hookStruct) {
 	hook.active = false
 }

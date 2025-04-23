@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// EntryID ...
+// EntryID identifies a cron entry
 type EntryID ID
 
 // Entry consists of a schedule and the func to execute on that schedule.
