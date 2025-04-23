@@ -3,29 +3,32 @@ package cron
 import (
 	"bytes"
 	"context"
-	"github.com/alaingilbert/cron/internal/mtx"
-	"github.com/jonboulle/clockwork"
 	"log/slog"
 	"sync"
 	"time"
+
+	"github.com/alaingilbert/cron/internal/mtx"
+	"github.com/jonboulle/clockwork"
 )
 
-// RunID ...
+// RunID represents a unique identifier for a job run.
 type RunID ID
 
+// JobRun represents a single execution of a scheduled job.
 type JobRun struct {
-	RunID       RunID
-	Entry       Entry
-	CreatedAt   time.Time
-	StartedAt   *time.Time
-	CompletedAt *time.Time
-	Events      []JobEvent
-	Error       error
-	Panic       bool
-	Logs        string
-	logger      *slog.Logger
+	RunID       RunID        // Unique identifier for this job run
+	Entry       Entry        // Job definition being executed
+	CreatedAt   time.Time    // When the run was created
+	StartedAt   *time.Time   // When execution began (nil if not started)
+	CompletedAt *time.Time   // When execution finished (nil if not completed)
+	Events      []JobEvent   // Timeline of events during execution
+	Error       error        // Final error state if any
+	Panic       bool         // Whether job panicked during execution
+	Logs        string       // Captured log output
+	logger      *slog.Logger // Internal logger instance
 }
 
+// Logger returns the structured logger for this job run
 func (j JobRun) Logger() *slog.Logger {
 	return j.logger
 }
