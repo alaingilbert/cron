@@ -702,22 +702,7 @@ func setNext(entries *entries, entry *Entry, id EntryID, c *Cron, isNow bool) {
 	_ = entries.heap.Update(id, newNext)
 }
 
-func (c *Cron) runNow(id EntryID) error {
-	if err := c.entries.WithE(func(entries *entries) error {
-		entry, exists := (*entries).entriesMap[id]
-		if !exists {
-			return ErrEntryNotFound
-		}
-		setNext(entries, entry, id, c, true)
-		return nil
-	}); err != nil {
-		return err
-	}
-	c.entriesUpdated() // runNow
-	return nil
-}
-
-func (c *Cron) modifyEntry(id EntryID, updateFunc func(entry *Entry) bool) error {
+func (c *Cron) modifyEntry(id EntryID, updateFunc func(entry *Entry) bool, isNow bool) error {
 	if err := c.entries.WithE(func(entries *entries) error {
 		entry, exists := entries.entriesMap[id]
 		if !exists {
@@ -726,7 +711,7 @@ func (c *Cron) modifyEntry(id EntryID, updateFunc func(entry *Entry) bool) error
 		if !updateFunc(entry) {
 			return errors.New("not changed")
 		}
-		setNext(entries, entry, id, c, false)
+		setNext(entries, entry, id, c, isNow)
 		return nil
 	}); err != nil {
 		return err
@@ -735,13 +720,19 @@ func (c *Cron) modifyEntry(id EntryID, updateFunc func(entry *Entry) bool) error
 	return nil
 }
 
+func (c *Cron) runNow(id EntryID) error {
+	return c.modifyEntry(id, func(entry *Entry) (updated bool) {
+		return true
+	}, true)
+}
+
 func (c *Cron) setEntryActive(id EntryID, active bool) {
 	_ = c.modifyEntry(id, func(entry *Entry) (updated bool) {
 		if updated = entry.Active != active; updated {
 			entry.Active = active
 		}
 		return
-	})
+	}, false)
 }
 
 func (c *Cron) updateSchedule(id EntryID, spec *string, schedule Schedule) error {
@@ -751,7 +742,7 @@ func (c *Cron) updateSchedule(id EntryID, spec *string, schedule Schedule) error
 			entry.Schedule = schedule
 		}
 		return
-	})
+	}, false)
 }
 
 func (c *Cron) updateScheduleWithSpec(id EntryID, spec string) error {
