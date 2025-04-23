@@ -696,13 +696,14 @@ func (c *Cron) updateLabel(id EntryID, label string) {
 
 func (c *Cron) runNow(id EntryID) error {
 	if err := c.entries.WithE(func(entries *entries) error {
-		if entry, ok := (*entries).entriesMap[id]; ok {
-			newNext := c.now()
-			(*entry).Next = newNext
-			_ = entries.heap.Update(id, newNext)
-			return nil
+		entry, exists := (*entries).entriesMap[id]
+		if !exists {
+			return ErrEntryNotFound
 		}
-		return ErrEntryNotFound
+		newNext := utils.TernaryOrZero(entry.Active, c.now())
+		(*entry).Next = newNext
+		_ = entries.heap.Update(id, newNext)
+		return nil
 	}); err != nil {
 		return err
 	}
