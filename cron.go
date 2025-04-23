@@ -207,7 +207,7 @@ func New(opts ...Option) *Cron {
 	parser := utils.Or(cfg.Parser, ScheduleParser(standardParser))
 	idFactory := utils.Or(cfg.IDFactory, UuidIDFactory())
 	jobRunLoggerFactory := utils.Or(cfg.JobRunLoggerFactory, DefaultJobRunLoggerFactory())
-	keepCompletedRunsDur := utils.Default(cfg.KeepCompletedRunsDur, time.Minute)
+	keepCompletedRunsDur := utils.Default(cfg.KeepCompletedRunsDur, 0)
 	ctx, cancel := context.WithCancel(parentCtx)
 	c := &Cron{
 		cond:                 sync.Cond{L: &sync.Mutex{}},
