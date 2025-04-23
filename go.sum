@@ -1,5 +1,5 @@
-github.com/alaingilbert/clockwork v0.0.0-20250419041608-104f5ec0143d h1:GAjyqYw4+HT5/VXFpcEPfeuzej6b90s1aS2Q9+zojao=
-github.com/alaingilbert/clockwork v0.0.0-20250419041608-104f5ec0143d/go.mod h1:3mZlmanh0g2NDKO5TWZVJAfofYk64M7XN3SzBPjZF60=
+github.com/alaingilbert/clockwork v0.0.0-20250419054047-e216ff12abca h1:f+mW8htFxfANa33BLBtfLI6qtHdwPf7v7qls5j7WZyc=
+github.com/alaingilbert/clockwork v0.0.0-20250419054047-e216ff12abca/go.mod h1:3mZlmanh0g2NDKO5TWZVJAfofYk64M7XN3SzBPjZF60=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=

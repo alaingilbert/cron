@@ -2,7 +2,7 @@ module github.com/alaingilbert/cron
 
 go 1.23
 
-replace github.com/jonboulle/clockwork => github.com/alaingilbert/clockwork v0.0.0-20250419041608-104f5ec0143d
+replace github.com/jonboulle/clockwork => github.com/alaingilbert/clockwork v0.0.0-20250419054047-e216ff12abca
 
 require (
 	github.com/jonboulle/clockwork v0.0.0
