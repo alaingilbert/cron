@@ -54,13 +54,13 @@ func (s SomeJob) Run(context.Context, *cron.Cron, cron.JobRun) error {
 func main() {
 	appCtx := context.Background()
 
-	l := log.New(os.Stdout, "", log.LstdFlags)
+	l := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 
-	c := cron.New(
-		cron.WithParser(cron.SecondParser),
-		cron.WithContext(appCtx), // Can provide a custom context
-		cron.WithLogger(l),       // Can provide a custom logger
-	)
+	c := cron.New().
+		WithParser(cron.SecondParser).
+		WithContext(appCtx). // Can provide a custom context
+		WithLogger(l).       // Can provide a custom logger
+		Build()
 
 	// A simple function can be used as a job
 	_, _ = c.AddJob("* * * * * *", func() {
