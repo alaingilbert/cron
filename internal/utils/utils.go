@@ -178,6 +178,13 @@ func SomeIter[T any](it iter.Seq[T], predicate func(T) bool) bool {
 	return FindIter(it, predicate) != nil
 }
 
+// ForEach ...
+func ForEach[T any](arr []T, clb func(T)) {
+	for _, el := range arr {
+		clb(el)
+	}
+}
+
 // NonBlockingSend ...
 func NonBlockingSend[T any](c chan T, el T) {
 	select {
