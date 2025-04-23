@@ -992,24 +992,22 @@ func (c *Cron) startJob(entry Entry) {
 }
 
 func (c *Cron) runWithRecovery(jobRun *jobRunStruct) {
-	entry := jobRun.entry
-	runID := jobRun.runID
-	clock := c.clock
-	logger := c.logger
+	runID, entry := jobRun.runID, jobRun.entry
+	entryID, label := entry.ID, entry.Label
+	clock, logger := c.clock, c.logger
 	start := clock.Now()
-
 	defer func() {
 		if r := recover(); r != nil {
-			logger.Error("job panic", "label", entry.Label, "entryID", entry.ID, "runID", runID, "error", r, "stack", string(debug.Stack()))
+			logger.Error("job panic", "label", label, "entryID", entryID, "runID", runID, "error", r, "stack", string(debug.Stack()))
 			makeEvent(c, jobRun, JobPanic)
 		}
-		logger.Info("job completed", "label", entry.Label, "entryID", entry.ID, "runID", runID, "duration", clock.Since(start))
+		logger.Info("job completed", "label", label, "entryID", entryID, "runID", runID, "duration", clock.Since(start))
 		makeEvent(c, jobRun, JobCompleted)
 	}()
-	logger.Info("job start", "label", entry.Label, "entryID", entry.ID, "runID", runID)
+	logger.Info("job start", "label", label, "entryID", entryID, "runID", runID)
 	makeEvent(c, jobRun, JobStart)
 	if err := entry.job.Run(jobRun.ctx, c, jobRun.export()); err != nil {
-		logger.Error("job error", "label", entry.Label, "entryID", entry.ID, "runID", runID, "error", err)
+		logger.Error("job error", "label", label, "entryID", entryID, "runID", runID, "error", err)
 		makeEventErr(c, jobRun, JobErr, err)
 	}
 }
