@@ -694,24 +694,20 @@ func (c *Cron) updateLabel(id EntryID, label string) {
 	})
 }
 
-func setNext(entries *entries, entry *Entry, id EntryID, c *Cron, isNow bool) {
-	now := c.now()
-	newNext := utils.Ternary(isNow, now, entry.Schedule.Next(now))
-	newNext = utils.TernaryOrZero(entry.Active, newNext)
-	(*entry).Next = newNext
-	_ = entries.heap.Update(id, newNext)
-}
-
 func (c *Cron) modifyEntry(id EntryID, updateFunc func(entry *Entry) bool, isNow bool) error {
 	if err := c.entries.WithE(func(entries *entries) error {
 		entry, exists := entries.entriesMap[id]
 		if !exists {
 			return ErrEntryNotFound
 		}
-		if !updateFunc(entry) {
+		if updateFunc != nil && !updateFunc(entry) {
 			return errors.New("not changed")
 		}
-		setNext(entries, entry, id, c, isNow)
+		now := c.now()
+		newNext := utils.Ternary(isNow, now, entry.Schedule.Next(now))
+		newNext = utils.TernaryOrZero(entry.Active, newNext)
+		(*entry).Next = newNext
+		_ = entries.heap.Update(id, newNext)
 		return nil
 	}); err != nil {
 		return err
@@ -721,9 +717,7 @@ func (c *Cron) modifyEntry(id EntryID, updateFunc func(entry *Entry) bool, isNow
 }
 
 func (c *Cron) runNow(id EntryID) error {
-	return c.modifyEntry(id, func(entry *Entry) (updated bool) {
-		return true
-	}, true)
+	return c.modifyEntry(id, nil, true)
 }
 
 func (c *Cron) setEntryActive(id EntryID, active bool) {
