@@ -236,8 +236,12 @@ func main() {
 		fmt.Println("job panic", run.Entry.ID, run.RunID)
 	})
 	
+	// Starts the cron executor in its own thread (async)
 	c.Start()
 
+	// It is possible to update the schedule of a job while the application is running
+	_ = c.UpdateScheduleWithSpec(useLoggerID, "*/10 * * * * *")
+	
 	// This library comes with a complete web interface administration tool (optional)
 	mux := webadmin.GetMux(c)
 	if err := http.ListenAndServe(":8080", mux); err != nil {
