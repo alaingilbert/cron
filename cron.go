@@ -840,7 +840,7 @@ func (c *Cron) setEntryActive(id EntryID, active bool) {
 
 func (c *Cron) updateSchedule(id EntryID, spec *string, schedule Schedule) error {
 	return c.modifyEntry(id, func(entry *Entry) (updated bool) {
-		if updated = entry.Spec != spec; updated {
+		if updated = entry.Spec != spec || spec == nil; updated {
 			entry.Spec = spec
 			entry.Schedule = schedule
 		}
