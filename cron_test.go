@@ -1179,7 +1179,10 @@ func TestUpdateSchedule(t *testing.T) {
 	var calls atomic.Int32
 	clock := clockwork.NewFakeClockAt(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
 	cron := New().WithClock(clock).WithParser(secondParser).WithLogger(newErrLogger()).Build()
-	id, _ := cron.AddJobStrict("0 0 1 * * *", baseJob{&calls})
+	id, _ := cron.AddFunc("0 0 1 * * *", func(context.Context, *Cron, JobRun) error {
+		calls.Add(1)
+		return nil
+	})
 	cron.Start()
 	advanceAndCycle(cron, time.Second)
 	assert.Equal(t, int32(0), calls.Load())

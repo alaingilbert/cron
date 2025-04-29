@@ -402,6 +402,11 @@ func (c *Cron) AddJobStrict(spec string, job Job, opts ...EntryOption) (EntryID,
 	return c.addJobStrict(spec, job, opts...)
 }
 
+// AddFunc adds a Job to the Cron to be run on the given schedule.
+func (c *Cron) AddFunc(spec string, job FuncJob, opts ...EntryOption) (EntryID, error) {
+	return c.addFunc(spec, job, opts...)
+}
+
 // Schedule adds a Job to the Cron to be run on the given schedule.
 func (c *Cron) Schedule(schedule Schedule, job Job, opts ...EntryOption) (EntryID, error) {
 	return c.schedule(nil, schedule, job, opts...)
@@ -752,6 +757,10 @@ func (c *Cron) onEntryJobCompleted(entryID EntryID, clb HookFn, opts ...HookOpti
 
 func (c *Cron) addJob(spec string, job IntoJob, opts ...EntryOption) (EntryID, error) {
 	return c.addJobStrict(spec, castIntoJob(job), opts...)
+}
+
+func (c *Cron) addFunc(spec string, job FuncJob, opts ...EntryOption) (EntryID, error) {
+	return c.addJobStrict(spec, job, opts...)
 }
 
 func (c *Cron) addJobStrict(spec string, job Job, opts ...EntryOption) (EntryID, error) {
