@@ -14,10 +14,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/gilgameshskytrooper/cron/internal/mtx"
-	"github.com/gilgameshskytrooper/cron/internal/pubsub"
-	isync "github.com/gilgameshskytrooper/cron/internal/sync"
-	"github.com/gilgameshskytrooper/cron/internal/utils"
+	"github.com/bravecorvus/cron/internal/mtx"
+	"github.com/bravecorvus/cron/internal/pubsub"
+	isync "github.com/bravecorvus/cron/internal/sync"
+	"github.com/bravecorvus/cron/internal/utils"
 	"github.com/jonboulle/clockwork"
 )
 

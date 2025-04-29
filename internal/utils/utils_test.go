@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gilgameshskytrooper/cron/internal/core"
+	"github.com/bravecorvus/cron/internal/core"
 	"github.com/stretchr/testify/assert"
 )
 

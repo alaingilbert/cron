@@ -9,7 +9,7 @@ import (
 
 	"github.com/jonboulle/clockwork"
 
-	"github.com/gilgameshskytrooper/cron/internal/utils"
+	"github.com/bravecorvus/cron/internal/utils"
 )
 
 // Job is an interface for submitted cron jobs.
