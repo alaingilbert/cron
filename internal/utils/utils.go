@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/bravecorvus/cron/internal/core"
+	"github.com/alaingilbert/cron/internal/core"
 )
 
 // Ptr ...

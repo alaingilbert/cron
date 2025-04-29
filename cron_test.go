@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bravecorvus/cron/internal/pubsub"
-	"github.com/bravecorvus/cron/internal/utils"
+	"github.com/alaingilbert/cron/internal/pubsub"
+	"github.com/alaingilbert/cron/internal/utils"
 
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
