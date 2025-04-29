@@ -3,12 +3,13 @@ package cron
 import (
 	"context"
 	"errors"
-	"github.com/jonboulle/clockwork"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/alaingilbert/cron/internal/utils"
+	"github.com/jonboulle/clockwork"
+
+	"github.com/gilgameshskytrooper/cron/internal/utils"
 )
 
 // Job is an interface for submitted cron jobs.

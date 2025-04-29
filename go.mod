@@ -1,4 +1,4 @@
-module github.com/alaingilbert/cron
+module github.com/gilgameshskytrooper/cron
 
 go 1.23
 

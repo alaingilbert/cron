@@ -4,7 +4,6 @@ import (
 	"context"
 	cryptoRand "crypto/rand"
 	"encoding/hex"
-	"github.com/alaingilbert/cron/internal/core"
 	"io"
 	"iter"
 	"math/rand/v2"
@@ -14,6 +13,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/gilgameshskytrooper/cron/internal/core"
 )
 
 // Ptr ...

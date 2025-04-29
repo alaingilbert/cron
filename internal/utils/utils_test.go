@@ -1,12 +1,13 @@
 package utils
 
 import (
-	"github.com/alaingilbert/cron/internal/core"
-	"github.com/stretchr/testify/assert"
 	mathRand "math/rand/v2"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/gilgameshskytrooper/cron/internal/core"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPtr(t *testing.T) {

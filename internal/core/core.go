@@ -3,8 +3,9 @@ package core
 import (
 	"crypto/rand"
 	"encoding/binary"
-	"github.com/alaingilbert/cron/internal/mtx"
 	mathRand "math/rand/v2"
+
+	"github.com/gilgameshskytrooper/cron/internal/mtx"
 )
 
 var RandSrc mtx.Mtx[*mathRand.Rand]
