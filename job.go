@@ -3,10 +3,11 @@ package cron
 import (
 	"context"
 	"errors"
-	"github.com/jonboulle/clockwork"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/jonboulle/clockwork"
 
 	"github.com/alaingilbert/cron/internal/utils"
 )

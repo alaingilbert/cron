@@ -3,13 +3,14 @@ package webadmin
 import (
 	"bytes"
 	"embed"
-	"github.com/alaingilbert/cron"
-	"github.com/alaingilbert/cron/internal/utils"
 	"html/template"
 	"net/http"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/alaingilbert/cron"
+	"github.com/alaingilbert/cron/internal/utils"
 )
 
 //go:embed templates/*

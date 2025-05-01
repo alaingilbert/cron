@@ -5,7 +5,7 @@ go 1.23
 replace github.com/jonboulle/clockwork => github.com/alaingilbert/clockwork v0.0.0-20250419054047-e216ff12abca
 
 require (
-	github.com/jonboulle/clockwork v0.0.0
+	github.com/jonboulle/clockwork v0.5.0
 	github.com/stretchr/testify v1.10.0
 )
 
